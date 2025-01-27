@@ -1,0 +1,90 @@
+body {
+  /* font-family: "Inter", system-ui; */
+  font-family: ui-monospace, Menlo, Monaco, "Cascadia Mono", "Segoe UI Mono",
+    "Roboto Mono", "Oxygen Mono", "Ubuntu Mono", "Source Code Pro", "Fira Mono",
+    "Droid Sans Mono", "Consolas", "Courier New", monospace;
+  margin: 2rem auto;
+  padding: 0 1rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
+  gap: 16px;
+}
+
+* {
+  font-size: 16px;
+  margin: 0;
+}
+
+.theater {
+  margin-bottom: 2rem;
+  padding: 16px;
+  /* background: #f9f9f9; */
+}
+
+.movie {
+  margin: 1rem 0;
+}
+
+.screenings {
+  margin-left: 1rem;
+}
+
+a {
+  /* color: #e91e63; */
+  color: inherit;
+  text-decoration: underline dotted black 1px;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+summary h3 {
+  display: inline-block;
+}
+
+h3 {
+  margin: 0;
+}
+
+td {
+  padding-inline-end: 1ch;
+  font-variant-numeric: tabular-nums;
+}
+
+.pre-text {
+  white-space: pre-wrap;
+}
+
+details summary {
+  position: relative;
+}
+
+details summary::marker {
+  display: none;
+  content: "";
+}
+
+details summary::after {
+  display: inline;
+  content: "[-]";
+  color: #9b9b9b;
+  transition: opacity 0.2s ease-in-out;
+  opacity: 0;
+  position: absolute;
+  right: 100%;
+}
+
+details:hover summary::after {
+  opacity: 1;
+}
+
+.seen-link {
+  color: #9b9b9b;
+  opacity: 0;
+  transition: opacity 0.2s ease-in-out;
+}
+
+details:hover .seen-link {
+  opacity: 1;
+}
