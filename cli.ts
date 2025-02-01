@@ -1,7 +1,9 @@
 import {
+  dateFormatter,
   DEFAULT_DATE_END,
   DEFAULT_DATE_START,
   DEFAULT_THEATRED_RANKED,
+  timeFormatter,
 } from "./commonValues.ts";
 import { fetchMovieData, type ScreeningsQuery } from "./data.ts";
 
@@ -15,19 +17,25 @@ const query: ScreeningsQuery = {
   theaters: DEFAULT_THEATRED_RANKED,
 };
 
-fetchMovieData(query).then((listings) => {
+fetchMovieData(query).then(({ screenings: listings }) => {
   for (const theater of listings) {
     console.log(theater.theaterName);
 
     for (const movie of theater.movies) {
+      if (movie.isAtEarlierTheater) {
+        continue;
+      }
+
       console.log("  " + hyperlink(movie.movieUrl, movie.title));
 
       for (const day of movie.days) {
-        const times = day.screenings.map(({ formattedTime, url }) => {
-          return hyperlink(url, formattedTime);
+        const times = day.screenings.map(({ time, url }) => {
+          return hyperlink(url, timeFormatter.format(time));
         });
 
-        console.log("    " + day.formattedDate + " - " + times.join(", "));
+        console.log(
+          "    " + dateFormatter.format(day.date) + " - " + times.join(", ")
+        );
       }
     }
   }
