@@ -32,9 +32,6 @@ importers:
       express-handlebars:
         specifier: ^8.0.1
         version: 8.0.1
-      handlebars:
-        specifier: ^4.7.8
-        version: 4.7.8
       typescript:
         specifier: ^5.7.3
         version: 5.7.3
