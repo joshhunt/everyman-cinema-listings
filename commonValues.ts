@@ -1,4 +1,4 @@
-const DAYS_AHEAD_TO_SEARCH = 21;
+export const DAYS_AHEAD_TO_SEARCH = 21;
 
 const CIRCUIT_ID = 101077;
 const STRAFORD_THEATER_ID = "G029X";
@@ -30,3 +30,30 @@ export const DEFAULT_THEATRED_RANKED = [
   BROADGATE_THEATER_ID,
   CANARY_WHARF_THEATER_ID,
 ];
+
+export const timeFormatOptions = {
+  hourCycle: "h12",
+  hour: "numeric",
+  minute: "numeric",
+} as const;
+
+export const dateFormatOptions = {
+  weekday: "short",
+  month: "short",
+  day: "numeric",
+} as const;
+
+export const timeFormatter = new Intl.DateTimeFormat(
+  "en-GB",
+  timeFormatOptions
+);
+
+export const dateFormatter = new Intl.DateTimeFormat(
+  "en-GB",
+  dateFormatOptions
+);
+
+export const dateTimeFormatter = new Intl.DateTimeFormat("en-GB", {
+  ...timeFormatOptions,
+  ...dateFormatOptions,
+});

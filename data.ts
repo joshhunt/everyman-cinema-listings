@@ -18,19 +18,39 @@ const WEBSITE_ID =
 const HASH_REGEX =
   /cms\-assets\.webediamovies\.pro\/prod\/everyman\/([A-z0-9]+)\/public/;
 
-const timeFormatter = new Intl.DateTimeFormat("en-GB", {
-  hourCycle: "h12",
-  hour: "numeric",
-  minute: "numeric",
-});
+interface CachedValue<T> {
+  key: string;
+  createdAt: number;
+  data: T;
+}
 
-const dateFormatter = new Intl.DateTimeFormat("en-GB", {
-  weekday: "short",
-  month: "short",
-  day: "numeric",
-});
+export class Timer {
+  private start: number;
+
+  constructor() {
+    this.start = Date.now();
+  }
+
+  getElapsed() {
+    return Date.now() - this.start;
+  }
+}
 
 const cache = new Cache("everyman-cinema-listings");
+
+function getCacheValue<T>(key: string): Promise<CachedValue<T> | undefined> {
+  return cache.get(key);
+}
+
+function setCacheValue<T>(key: string, data: T, ttl: number): Promise<void> {
+  const obj: CachedValue<T> = {
+    key,
+    createdAt: Date.now(),
+    data,
+  };
+
+  return cache.set(key, obj, ttl);
+}
 
 async function writeDebug(path: string, data: any) {
   if (process.env.DEBUG) {
@@ -65,8 +85,8 @@ const ONE_HOUR = 60 * 60 * 1000;
 const ONE_DAY = ONE_HOUR * 24;
 const TWO_DAYS = ONE_DAY * 2;
 
-async function getStaticSiteHash(): Promise<string> {
-  const cached = await cache.get("static-site-hash");
+async function getStaticSiteHash(): Promise<CachedValue<string>> {
+  const cached = await getCacheValue<string>("static-site-hash");
   if (cached) {
     return cached;
   }
@@ -94,14 +114,16 @@ async function getStaticSiteHash(): Promise<string> {
     throw new Error("No hash found");
   }
 
-  await cache.set("static-site-hash", staticSiteHash, ONE_DAY);
-  return staticSiteHash;
+  await setCacheValue("static-site-hash", staticSiteHash, ONE_DAY);
+  return getStaticSiteHash();
 }
 
 async function getStaticQueries(
   staticSiteHash: string
-): Promise<StaticQueries> {
-  const cached = await cache.get(`static-queries-${staticSiteHash}`);
+): Promise<CachedValue<StaticQueries>> {
+  const cached = await getCacheValue<StaticQueries>(
+    `static-queries-${staticSiteHash}`
+  );
   if (cached) {
     return cached;
   }
@@ -120,13 +142,13 @@ async function getStaticQueries(
     )
   );
 
-  await cache.set(
+  await setCacheValue(
     `static-queries-${staticSiteHash}`,
     allStaticQueries,
     TWO_DAYS
   );
 
-  return allStaticQueries;
+  return getStaticQueries(staticSiteHash);
 }
 
 async function getMoviesMetadata(
@@ -169,16 +191,16 @@ type BoxOfficeScheduleResponse = {
   }[];
 }[];
 
-async function getBoxofficeAPISchedule(
+async function getBoxOfficeAPISchedule(
   query: ScreeningsQuery,
   allMovieIds: string[]
-): Promise<BoxOfficeScheduleResponse> {
+): Promise<CachedValue<BoxOfficeScheduleResponse>> {
   const cacheKey = JSON.stringify({
     query,
     allMovieIds,
   });
 
-  const cached = await cache.get(cacheKey);
+  const cached = await getCacheValue<BoxOfficeScheduleResponse>(cacheKey);
   if (cached) {
     return cached;
   }
@@ -254,9 +276,8 @@ async function getBoxofficeAPISchedule(
     screeningsByMovieByDayByTheater
   );
 
-  await cache.set(cacheKey, screeningsByMovieByDayByTheater, ONE_HOUR);
-
-  return screeningsByMovieByDayByTheater;
+  await setCacheValue(cacheKey, screeningsByMovieByDayByTheater, ONE_HOUR);
+  return getBoxOfficeAPISchedule(query, allMovieIds);
 }
 
 export interface ScreeningsQuery {
@@ -266,25 +287,39 @@ export interface ScreeningsQuery {
 }
 
 export async function fetchMovieData(query: ScreeningsQuery) {
-  const staticSiteHash = await getStaticSiteHash();
-  const staticQueries = await getStaticQueries(staticSiteHash);
+  const staticSiteHashTimer = new Timer();
+  const { data: staticSiteHash, createdAt: staticSiteHashCreatedAtTs } =
+    await getStaticSiteHash();
+  console.log(`Static site hash: ${staticSiteHashTimer.getElapsed()}ms`);
 
+  const staticQueriesTimer = new Timer();
+
+  const { data: staticQueries, createdAt: staticQueriesCreatedAtTs } =
+    await getStaticQueries(staticSiteHash);
+  console.log(`Static queries: ${staticQueriesTimer.getElapsed()}ms`);
+
+  const staticSiteHashCreatedAt = new Date(staticSiteHashCreatedAtTs);
+  const staticQueriesCreatedAt = new Date(staticQueriesCreatedAtTs);
+
+  const metadataTimer = new Timer();
   const [moviesMetadata, theatersMetadata] = await Promise.all([
     getMoviesMetadata(staticQueries),
     getTheatersMetadata(staticQueries),
   ]);
+  console.log(`Metadata: ${metadataTimer.getElapsed()}ms`);
 
   const allMovieIds = moviesMetadata.map((v) => v.id);
 
   const seenMovies = new Set();
   const result = [];
 
-  const screeningsByMovieByDayByTheater = await getBoxofficeAPISchedule(
-    query,
-    allMovieIds
-  );
+  const boxOfficeScheduleTimer = new Timer();
+  const { data: boxOfficeSchedule, createdAt: boxOfficeScheduleCreatedAtTs } =
+    await getBoxOfficeAPISchedule(query, allMovieIds);
+  console.log(`Box office schedule: ${boxOfficeScheduleTimer.getElapsed()}ms`);
+  const boxOfficeScheduleCreatedAt = new Date(boxOfficeScheduleCreatedAtTs);
 
-  for (const theaterData of screeningsByMovieByDayByTheater) {
+  for (const theaterData of boxOfficeSchedule) {
     const theater = theatersMetadata.find(
       (v) => v.id === theaterData.theaterId
     );
@@ -299,11 +334,9 @@ export async function fetchMovieData(query: ScreeningsQuery) {
     };
 
     for (const movieData of theaterData.movies) {
-      if (seenMovies.has(movieData.movieId)) {
-        continue;
-      }
-
+      const isAtEarlierTheater = seenMovies.has(movieData.movieId);
       seenMovies.add(movieData.movieId);
+
       const movie = moviesMetadata.find((v) => v.id === movieData.movieId);
 
       if (!movie) {
@@ -315,13 +348,14 @@ export async function fetchMovieData(query: ScreeningsQuery) {
         movieUrl: `https://www.everymancinema.com${movie.path}`,
         title: movie.title,
         path: movie.path,
+        isAtEarlierTheater,
         days: movieData.days.map((dayData) => {
           const dayDate = new Date(dayData.day);
 
           return {
-            formattedDate: dateFormatter.format(dayDate),
+            date: dayDate,
             screenings: dayData.screenings.map((screening) => ({
-              formattedTime: timeFormatter.format(new Date(screening.startsAt)),
+              time: new Date(screening.startsAt),
               url: screening.data.ticketing[0].urls[0],
             })),
           };
@@ -334,7 +368,13 @@ export async function fetchMovieData(query: ScreeningsQuery) {
     result.push(theaterResult);
   }
 
-  return result;
+  return {
+    screenings: result,
+    staticSiteHashCreatedAt,
+    staticQueriesCreatedAt,
+    boxOfficeScheduleCreatedAt,
+    theaters: theatersMetadata,
+  };
 }
 
 export interface TheaterScreenings {
@@ -348,15 +388,16 @@ export interface MovieScreenings {
   movieUrl: string;
   path: string;
   seen?: boolean;
+  isAtEarlierTheater: boolean;
   days: DayScreenings[];
 }
 
 export interface DayScreenings {
-  formattedDate: string;
+  date: Date;
   screenings: Screening[];
 }
 
 export interface Screening {
-  formattedTime: string;
+  time: Date;
   url: string;
 }

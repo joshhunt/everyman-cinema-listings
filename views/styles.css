@@ -3,10 +3,13 @@ body {
   font-family: ui-monospace, Menlo, Monaco, "Cascadia Mono", "Segoe UI Mono",
     "Roboto Mono", "Oxygen Mono", "Ubuntu Mono", "Source Code Pro", "Fira Mono",
     "Droid Sans Mono", "Consolas", "Courier New", monospace;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
-  gap: 32px;
   padding: 32px;
+}
+
+:root {
+  --gap: 1rem;
+  --border-color: #e9e9e9;
+  --grey: #9b9b9b;
 }
 
 * {
@@ -14,11 +17,32 @@ body {
   margin: 0;
 }
 
+.theaters-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(500px, 1fr));
+  gap: var(--gap);
+  margin-bottom: var(--gap);
+  position: relative;
+}
+
+.theaters-grid::after {
+  content: "";
+  position: absolute;
+  background-color: var(--border-color);
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+}
+
 .theater {
-  margin-bottom: 2rem;
-  /* padding: 16px; */
-  /* background: #f9f9f9; */
-  border-bottom: 1px solid #e9e9e9;
+  border-bottom: 1px solid var(--border-color);
+  position: relative;
+}
+
+.hr {
+  border-bottom: 1px solid var(--border-color);
+  margin: 1rem 0;
 }
 
 .movie {
@@ -30,7 +54,6 @@ body {
 }
 
 a {
-  /* color: #e91e63; */
   color: inherit;
   text-decoration: underline dotted black 1px;
 }
@@ -56,6 +79,10 @@ td {
   white-space: pre-wrap;
 }
 
+.nowrap {
+  white-space: nowrap;
+}
+
 details summary {
   position: relative;
 }
@@ -68,7 +95,7 @@ details summary::marker {
 details summary::after {
   display: inline;
   content: "[-]";
-  color: #9b9b9b;
+  color: var(--grey);
   transition: opacity 0.2s ease-in-out;
   opacity: 0;
   position: absolute;
@@ -80,11 +107,44 @@ details:hover summary::after {
 }
 
 .seen-link {
-  color: #9b9b9b;
+  color: var(--grey);
   opacity: 0;
   transition: opacity 0.2s ease-in-out;
 }
 
 details:hover .seen-link {
   opacity: 1;
+}
+
+.day-ahead {
+  display: inline-block;
+}
+
+.day-ahead + .day-ahead {
+  margin-left: 1ch;
+}
+
+.selected {
+  text-decoration: underline;
+  font-weight: bold;
+}
+
+table {
+  border-collapse: collapse;
+}
+
+table tr + tr td {
+  padding-top: 0.2rem;
+}
+
+table td + td {
+  padding-left: 0.2rem;
+}
+
+details summary {
+  color: var(--grey);
+}
+
+details[open] summary {
+  color: black;
 }

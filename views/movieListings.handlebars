@@ -1,31 +1,67 @@
 
+<div class="theaters-grid"> 
+    {{#each screenings}}
+        <div class="theater">
+            <h2>{{theaterName}}</h2>
+            {{#each movies}}
+                <div class="movie">
+                    <details {{#unless collapse}}open{{/unless}}>
+                        <summary>
+                            <h3>
+                                <a href="https://www.everymancinema.com{{path}}">{{title}}</a>
+                                <a class="seen-link" href="/set-seen?movieId={{movieId}}">[{{#if seen}}unsee{{else}}seen{{/if}}]</a>
+                            </h3>
+                        </summary>
+                        <table border="0" cellpadding="0" cellspacing="0">
+                            <tbody>
+                                {{#each days}}
+                                    <tr class="screenings">
+                                        <td>{{formatDate date}}</td>
+                                        {{#each screenings}}
+                                            <td class="pre-text">{{space (formatTime time)}}<a href="{{url}}">{{formatTime time}}</a></td>
+                                        {{/each}}
+                                    </tr>
+                                {{/each}}
+                            </tbody>
+                        </table>
+                    </details>
+                </div>
+            {{/each}}
+        </div>
+    {{/each}}
+</div>
 
-{{#each theaters}}
-    <div class="theater">
-        <h2>{{theaterName}}</h2>
-        {{#each movies}}
-            <div class="movie">
-                <details {{#unless seen}}open{{/unless}}>
-                    <summary>
-                        <h3>
-                            <a href="https://www.everymancinema.com{{path}}">{{title}}</a>
-                            <a class="seen-link" href="/set-seen?movieId={{movieId}}">[{{#if seen}}unsee{{else}}seen{{/if}}]</a>
-                        </h3>
-                    </summary>
-                    <table>
-                        <tbody>
-                            {{#each days}}
-                                <tr class="screenings">
-                                    <td>{{formattedDate}}</td>
-                                    {{#each screenings}}
-                                        <td class="pre-text">{{space formattedTime}}<a href="{{url}}">{{formattedTime}}</a></td>
-                                    {{/each}}
-                                </tr>
-                            {{/each}}
-                        </tbody>
-                    </table>
-                </details>
-            </div>
-        {{/each}}
-    </div>
-{{/each}}
+<table border="0" cellpadding="0" cellspacing="0">
+    <tbody>
+        <tr>
+            <td class="nowrap">Site hash</td>
+            <td>{{formatDateTime staticSiteHashCreatedAt}}</td>
+        </tr>
+        <tr>
+            <td class="nowrap">Static queries</td>
+            <td>{{formatDateTime staticQueriesCreatedAt}}</td>
+        </tr>
+        <tr>
+            <td class="nowrap">Schedule</td>
+            <td>{{formatDateTime boxOfficeScheduleCreatedAt}}</td>
+        </tr>
+
+        <tr>
+            <td class="nowrap">Days ahead</td>
+            <td>
+                {{#each daysAheadOptions}}
+                    <a class="day-ahead {{#if selected}}selected{{/if}}" href="/set-days-ahead?days={{days}}">{{label}}</a>
+                {{/each}}
+            </td>
+        </tr>
+
+        <tr>
+            <td class="nowrap">Theaters</td>
+            <td>
+                {{#each theaters}}
+                    <a class="{{#if selected}}selected{{/if}}" href="/set-theater?theaterId={{id}}">{{name}}</a>
+                {{/each}}
+            </td>
+        </tr>
+    </tbody>
+</table>
