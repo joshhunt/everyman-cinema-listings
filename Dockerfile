@@ -5,11 +5,16 @@ ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable
 
 WORKDIR /app
-COPY . .
 
+COPY pnpm-lock.yaml /app
+RUN pnpm fetch --prod
+
+COPY package.json .
 RUN pnpm install
+
+COPY . .
 
 ENV PORT=80
 EXPOSE 80
 
-CMD ["node", "server.ts"]
+CMD [ "node", "server.ts" ]
