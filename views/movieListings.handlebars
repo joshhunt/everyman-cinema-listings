@@ -1,0 +1,31 @@
+
+
+{{#each theaters}}
+    <div class="theater">
+        <h2>{{theaterName}}</h2>
+        {{#each movies}}
+            <div class="movie">
+                <details {{#unless seen}}open{{/unless}}>
+                    <summary>
+                        <h3>
+                            <a href="https://www.everymancinema.com{{path}}">{{title}}</a>
+                            <a class="seen-link" href="/set-seen?movieId={{movieId}}">[{{#if seen}}unsee{{else}}seen{{/if}}]</a>
+                        </h3>
+                    </summary>
+                    <table>
+                        <tbody>
+                            {{#each days}}
+                                <tr class="screenings">
+                                    <td>{{formattedDate}}</td>
+                                    {{#each screenings}}
+                                        <td class="pre-text">{{space formattedTime}}<a href="{{url}}">{{formattedTime}}</a></td>
+                                    {{/each}}
+                                </tr>
+                            {{/each}}
+                        </tbody>
+                    </table>
+                </details>
+            </div>
+        {{/each}}
+    </div>
+{{/each}}
