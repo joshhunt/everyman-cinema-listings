@@ -1,8 +1,6 @@
 import express, { type Request, type Response } from "express";
 import cookieParser from "cookie-parser";
 import { fetchMovieData, Timer, type ScreeningsQuery } from "./data.ts";
-import { watch } from "fs";
-import { readFile } from "fs/promises";
 import { create } from "express-handlebars";
 import {
   DEFAULT_THEATRED_RANKED,
