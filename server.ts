@@ -19,11 +19,20 @@ const hbs = create({
     space(str: string) {
       return " ".repeat("12:00 pm".length - str.length);
     },
-    formatDate(date: Date) {
-      return dateFormatter.format(date);
+    formatDate(date: Date, padding: number) {
+      const formatted = dateFormatter.format(date);
+
+      if (padding) {
+        return formatted.padStart(padding, "0");
+      }
+      return formatted;
     },
-    formatTime(date: Date) {
-      return timeFormatter.format(date);
+    formatTime(date: Date, padding: number) {
+      const formatted = timeFormatter.format(date);
+      if (padding) {
+        return formatted.padStart(padding, "0");
+      }
+      return formatted;
     },
     formatDateTime(date: Date) {
       return dateTimeFormatter.format(date);

@@ -9,6 +9,9 @@
   --hover-color: #2a2a2a;
   --nav-width: 240px;
   --max-content-width: 500px;
+  --collapsed-opacity: 0.5;
+
+  /* font-size: 18px; */
 }
 
 /* Base styles */
@@ -41,8 +44,9 @@ body {
   overflow-y: auto;
   flex-shrink: 0;
   border-right: 1px solid var(--border-color);
+  font-size: 0.8rem;
 
-  display: none;
+  /* display: none; */
 }
 
 .nav-theater {
@@ -57,7 +61,6 @@ body {
   color: var(--text-primary);
   text-decoration: none;
   font-weight: 500;
-  font-size: 1rem;
   display: block;
 }
 
@@ -69,14 +72,14 @@ body {
 .nav-movies {
   margin-top: 0.5rem;
   list-style: none;
-  padding-left: 1rem;
+  padding-left: 0.5rem;
   margin: 0;
 }
 
 .nav-movie-link {
   color: var(--text-secondary);
   text-decoration: none;
-  font-size: 0.9rem;
+  /* font-size: 0.9rem; */
   display: block;
   padding: 0.2rem 0;
   white-space: nowrap;
@@ -95,29 +98,32 @@ body {
 
 /* Main content */
 .main-content {
-  flex: 1;
   padding: 1.5rem;
   margin: 0 auto;
+}
+
+.theater-list {
+  flex: 1;
   display: grid;
   grid-template-columns: repeat(
     auto-fill,
     minmax(min(var(--max-content-width), 100%), 1fr)
   );
-  gap: 3rem;
+  gap: 2rem 4rem;
 }
 
 /* Theater section */
-.theater-section {
-  margin-bottom: 2rem;
-  padding: 0;
-}
-
 .theater-name {
   margin: 0 0 1rem 0;
   font-size: 1.2rem;
   color: var(--text-primary);
   border-bottom: 1px solid var(--border-color);
   padding-bottom: 0.25rem;
+
+  position: sticky;
+  top: 0;
+  background: var(--background-color);
+  z-index: 2;
 }
 
 /* Movie card */
@@ -126,29 +132,27 @@ body {
   margin-bottom: 1.5rem;
 }
 
-.movie-card.collapsed {
-  opacity: 0.7;
+.is-collapsed {
+  opacity: var(--collapsed-opacity);
   margin-bottom: 0.5rem;
 }
 
-.movie-card.collapsed .screenings-table {
+.is-collapsed.hide-on-collapsed,
+.is-collapsed .hide-on-collapsed {
   display: none;
 }
 
 /* Movie header */
 .movie-header {
   display: flex;
-  justify-content: space-between;
+  gap: 0.5rem;
   align-items: center;
   padding-bottom: 0.5rem;
   background-color: transparent;
 }
 
-.movie-title-container {
-  flex: 1;
-}
-
 .movie-title {
+  flex: 1;
   margin: 0;
   font-size: 1rem;
   font-weight: 500;
@@ -171,31 +175,50 @@ body {
 }
 
 /* Toggle button */
+.toggle-link,
 .toggle-button {
   background: none;
   border: none;
   cursor: pointer;
-  padding: 0.25rem 1rem;
   color: var(--text-secondary);
-  transition: color 150ms ease-in-out;
+  transition: color 150ms ease-in-out, opacity 150ms ease-in-out;
+  min-width: 44px;
+  min-height: 1rem;
+  text-align: center;
+  text-decoration: none;
+  font-size: 0.8rem;
+
+  &:hover {
+    color: var(--text-primary);
+  }
 }
 
-.toggle-button:hover {
-  color: var(--text-primary);
+@media (pointer: fine) {
+  .show-on-hover {
+    opacity: 0;
+  }
+
+  .show-on-hover-source:hover .show-on-hover {
+    opacity: 1;
+  }
 }
 
 .toggle-icon {
-  display: block;
+  display: inline-block;
   width: 8px;
   height: 8px;
   border-right: 2px solid currentColor;
   border-bottom: 2px solid currentColor;
   transform: rotate(45deg);
-  transition: transform 150ms ease-in-out;
-}
+  transition: transform 150ms ease-in-out, top 150ms ease-in-out;
 
-.collapsed .toggle-icon {
-  transform: rotate(-45deg);
+  position: relative;
+  top: -1px;
+
+  .is-collapsed & {
+    transform: rotate(-45deg);
+    top: 0;
+  }
 }
 
 /* Reset table styles */
@@ -240,35 +263,81 @@ td {
   td.times-cell {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem 1rem;
+    gap: calc(var(--spacing) * 1.5);
     align-items: center;
   }
 }
 
-.time-slot {
-  background-color: transparent;
-  color: var(--text-primary);
-  /* padding: 0; */
+.meta-table {
+  --spacing: 0.5rem;
+
+  margin-top: 2rem;
   font-size: 0.9rem;
-  min-width: 8ch;
+
+  th {
+    white-space: nowrap;
+  }
+
+  td,
+  th {
+    text-align: left;
+    vertical-align: top;
+
+    &:not(:last-child) {
+      padding-right: var(--spacing);
+    }
+
+    tr:not(:last-child) & {
+      padding-bottom: var(--spacing);
+    }
+  }
+}
+
+.padding-zero {
+  opacity: 0;
+}
+
+.time-slot {
+  font-size: 0.9rem;
   display: inline-block;
   white-space: nowrap;
 }
 
-.time-slot a {
-  color: inherit;
-  text-decoration: none;
+.actions-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25em 1em;
+  align-items: center;
 }
 
-.time-slot a:hover {
-  color: var(--accent-color);
-  text-decoration: underline;
+.action-link {
+  color: var(--text-primary);
+  text-decoration: none;
+
+  &.selected {
+    color: var(--accent-color);
+    font-weight: 500;
+  }
+
+  &:hover {
+    color: var(--accent-color);
+    text-decoration: underline;
+  }
 }
 
 /* Responsive styles */
 @media (max-width: 768px) {
+  :root {
+    font-size: 16px;
+  }
+
   body {
     flex-direction: column;
+  }
+
+  .theater-list {
+    padding: 0.75rem;
+    gap: 1.5rem;
   }
 
   .nav-sidebar {
@@ -282,42 +351,5 @@ td {
 
   .nav-movies {
     display: none;
-  }
-
-  .main-content {
-    padding: 0.75rem;
-    grid-template-columns: 1fr;
-  }
-
-  .theater-section {
-    margin-bottom: 1.5rem;
-  }
-
-  .movie-title {
-    font-size: 0.95rem;
-  }
-
-  th,
-  td {
-    /* padding: 0.2rem; */
-    font-size: 0.85rem;
-  }
-
-  .date-cell {
-    width: 80px;
-  }
-
-  .times-cell {
-    /* gap: 0.25rem 0.5rem; */
-  }
-}
-
-@media (min-width: 1200px) {
-  .main-content {
-    padding: 2rem;
-  }
-
-  .theater-section {
-    margin-bottom: 2.5rem;
   }
 }

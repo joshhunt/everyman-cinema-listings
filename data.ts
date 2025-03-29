@@ -10,6 +10,7 @@ import type {
   Schedule,
 } from "./types.ts";
 import Cache from "@joshhunt/fs-cache";
+import { timeFormatter } from "./commonValues.ts";
 
 const CIRCUIT_ID = 101077;
 const WEBSITE_ID =
@@ -333,6 +334,8 @@ export async function fetchMovieData(query: ScreeningsQuery) {
       movies: [],
     };
 
+    console.log(theater.name);
+
     for (const movieData of theaterData.movies) {
       const isAtEarlierTheater = seenMovies.has(movieData.movieId);
       seenMovies.add(movieData.movieId);
@@ -342,6 +345,8 @@ export async function fetchMovieData(query: ScreeningsQuery) {
       if (!movie) {
         throw new Error(`Unable to find movie ${movieData.movieId}`);
       }
+
+      const maxLengthByIndex = new Map<number, number>();
 
       const movieResult: MovieScreenings = {
         movieId: movie.id,
@@ -354,13 +359,41 @@ export async function fetchMovieData(query: ScreeningsQuery) {
 
           return {
             date: dayDate,
-            screenings: dayData.screenings.map((screening) => ({
-              time: new Date(screening.startsAt),
-              url: screening.data.ticketing[0].urls[0],
-            })),
+            screenings: dayData.screenings.map((screening, index) => {
+              const time = new Date(screening.startsAt);
+              const formattedTime = timeFormatter.format(time);
+              maxLengthByIndex.set(
+                index,
+                Math.max(maxLengthByIndex.get(index) ?? 0, formattedTime.length)
+              );
+
+              return {
+                time,
+                formattedTime,
+                url: screening.data.ticketing[0].urls[0],
+              };
+            }),
           };
         }),
       };
+
+      for (const day of movieResult.days) {
+        for (
+          let screeningIndex = 0;
+          screeningIndex < day.screenings.length;
+          screeningIndex++
+        ) {
+          const screening = day.screenings[screeningIndex];
+          const maxLength = maxLengthByIndex.get(screeningIndex) ?? 0;
+
+          const paddingLength = maxLength - screening.formattedTime.length;
+          const padding = "<span class='padding-zero'>0</span>".repeat(
+            paddingLength
+          );
+
+          screening.formattedTime = padding + screening.formattedTime;
+        }
+      }
 
       theaterResult.movies.push(movieResult);
     }
@@ -399,5 +432,6 @@ export interface DayScreenings {
 
 export interface Screening {
   time: Date;
+  formattedTime: string;
   url: string;
 }

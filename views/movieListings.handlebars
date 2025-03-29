@@ -1,30 +1,30 @@
 <!-- Navigation Sidebar -->
-<nav class="nav-sidebar">
+{{!-- <nav class="nav-sidebar">
   {{#each screenings}}
     <div class="nav-theater">
       <a href="#theater-{{@index}}" class="nav-theater-link">{{theaterName}}</a>
       
       <ul class="nav-movies">
         {{#each movies}}
-          <li>
-            <a href="#movie-{{@../index}}-{{@index}}" class="nav-movie-link {{#if seen}}collapsed{{/if}} {{#if collapse}}collapsed{{/if}}">{{title}}</a>
+          <li class="hide-on-collapsed {{#if seen}}is-seen is-collapsed{{/if}} {{#if collapse}}is-at-earlier-theater is-collapsed{{/if}}"> 
+            <a href="#movie-{{@../index}}-{{@index}}" class="nav-movie-link ">{{title}}</a>
           </li>
         {{/each}}
       </ul>
     </div>
   {{/each}}
-</nav>
+</nav> --}}
 
 <!-- Main Content -->
 <main class="main-content">
-  {{#each screenings}}
-    <div id="theater-{{@index}}" class="theater-section">
-      <h2 class="theater-name">{{theaterName}}</h2>
-      
-      {{#each movies}}
-        <div id="movie-{{@../index}}-{{@index}}" class="movie-card {{#if seen}}collapsed{{/if}} {{#if collapse}}collapsed{{/if}}">
-          <div class="movie-header">
-            <div class="movie-title-container">
+  <div class="theater-list">
+    {{#each screenings}}
+      <div id="theater-{{@index}}" class="theater-section">
+        <h2 class="theater-name">{{theaterName}}</h2>
+        
+        {{#each movies}}
+          <div id="movie-{{@../index}}-{{@index}}" class="movie-card show-on-hover-source {{#if seen}}is-seen is-collapsed{{/if}} {{#if collapse}}is-at-earlier-theater is-collapsed{{/if}}">
+            <div class="movie-header">
               <h3 class="movie-title">
                 {{#if movieUrl}}
                   <a href="{{movieUrl}}" target="_blank">{{title}}</a>
@@ -33,32 +33,75 @@
                 {{/if}}
               </h3>
 
-              {{!-- {{#if isAtEarlierTheater}}
-                <span class="earlier-theater-indicator">Shown at previous theater</span>
-              {{/if}} --}}
+              <a href="/set-seen?movieId={{movieId}}" class="toggle-link show-on-hover hide-on-collapsed js-mark-seen">
+                [{{#if seen}}unsee{{else}}seen{{/if}}]
+              </a>
+
+              <button class="toggle-button js-toggle-collapsed" aria-label="Toggle movie details">
+                <span class="toggle-icon"></span>
+              </button>
             </div>
+            
+            {{!-- {{#if isAtEarlierTheater}}
+              <p class="earlier-theater-indicator"><em>Shown at previous theater</em></p>
+            {{/if}} --}}
 
-            <button class="toggle-button" aria-label="Toggle movie details">
-              <span class="toggle-icon"></span>
-            </button>
+            <table class="screenings-table hide-on-collapsed hide-on-seen hide-on-at-earlier-theater" border="0" cellpadding="0" cellspacing="0">
+              <tbody>
+                {{#each days}}
+                  <tr>
+                    <td class="date-cell">{{formatDate date}}</td>
+                    <td class="times-cell">
+                      {{#each screenings}}
+                        <a class="action-link time-slot" href="{{url}}">{{{formattedTime}}}</a>
+                      {{/each}}
+                    </td>
+                  </tr>
+                {{/each}}
+              </tbody>
+            </table>
           </div>
+        {{/each}}
+      </div>
+    {{/each}}
+  </div>
 
-          <table class="screenings-table" border="0" cellpadding="0" cellspacing="0">
-            <tbody>
-              {{#each days}}
-                <tr>
-                  <td class="date-cell">{{formatDate date}}</td>
-                  <td class="times-cell">
-                    {{#each screenings}}
-                      <span class="time-slot">{{space (formatTime time)}}<a href="{{url}}">{{formatTime time}}</a></span>
-                    {{/each}}
-                  </td>
-                </tr>
-              {{/each}}
-            </tbody>
-          </table>
-        </div>
-      {{/each}}
-    </div>
-  {{/each}}
+  <table class="meta-table" border="0" cellpadding="0" cellspacing="0">
+    <tbody>
+      <tr>
+        <th class="nowrap">Site hash</th>
+        <td>{{formatDateTime staticSiteHashCreatedAt}}</td>
+      </tr>
+      <tr>
+        <th class="nowrap">Static queries</th>
+        <td>{{formatDateTime staticQueriesCreatedAt}}</td>
+      </tr>
+      <tr>
+        <th class="nowrap">Schedule</th>
+        <td>{{formatDateTime boxOfficeScheduleCreatedAt}}</td>
+      </tr>
+
+      <tr>
+        <th class="nowrap">Days ahead</th>
+        <td>
+          <div class="actions-list">
+            {{#each daysAheadOptions}}
+              <a class="action-link day-ahead {{#if selected}}selected{{/if}}" href="/set-days-ahead?days={{days}}">{{label}}</a>
+            {{/each}}
+          </div>
+        </td>
+      </tr>
+
+      <tr>
+        <th class="nowrap">Theaters</th>
+        <td>
+          <div class="actions-list">
+            {{#each theaters}}
+              <a class="action-link {{#if selected}}selected{{/if}}" href="/set-theater?theaterId={{id}}">{{name}}</a>
+            {{/each}}
+          </div>
+        </td>
+      </tr>
+    </tbody>
+  </table>
 </main>
