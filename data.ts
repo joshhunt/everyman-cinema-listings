@@ -17,7 +17,7 @@ const WEBSITE_ID =
   "V2Vic2l0ZU1hbmFnZXJXZWJzaXRlOmIyNWQwN2RkLTczYTYtNDg1Ny1iODAzLWZiMmMyM2NiYjFkYQ==";
 
 const HASH_REGEX =
-  /cms\-assets\.webediamovies\.pro\/prod\/everyman\/([A-z0-9]+)\/public/;
+  /cms\-assets\.webediamovies\.pro\/prod\/everyman\/([A-z0-9\-]+)\/public/;
 
 interface CachedValue<T> {
   key: string;
