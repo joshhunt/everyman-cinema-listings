@@ -18,4 +18,4 @@ COPY . .
 ENV PORT=80
 EXPOSE 80
 
-CMD [ "node", "server.ts" ]
+CMD [ "node", "server.ts", "--import", "./src/instrumentation.ts", "--experimental-loader=@opentelemetry/instrumentation/hook.mjs"]

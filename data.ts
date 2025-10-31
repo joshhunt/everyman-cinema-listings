@@ -1,5 +1,5 @@
 import { writeFile } from "fs/promises";
-import opentelemetry, { type Context, type Span } from "@opentelemetry/api";
+import opentelemetry, { type Span } from "@opentelemetry/api";
 import * as cheerio from "cheerio";
 import type {
   FilmsMetadataResponse,
@@ -12,7 +12,7 @@ import type {
 } from "./types.ts";
 import Cache from "@joshhunt/fs-cache";
 import { timeFormatter } from "./commonValues.ts";
-import { traced } from "./src/lib/otel.ts";
+import { createTraced } from "./src/lib/otel.ts";
 
 const CIRCUIT_ID = 101077;
 const WEBSITE_ID =
@@ -40,49 +40,21 @@ export class Timer {
 }
 
 const tracer = opentelemetry.trace.getTracer("data-lib", "0.1");
-
-class ActiveSpan {
-  span: opentelemetry.Span | null = null;
-  ctx: Context | null = null;
-
-  constructor(name: string) {
-    this.span = null;
-
-    tracer.startActiveSpan(name, (span) => {
-      this.span = span;
-      this.ctx = opentelemetry.trace.setSpan(
-        opentelemetry.context.active(),
-        span
-      );
-    });
-  }
-
-  // For sync cleanup
-  [Symbol.dispose]() {
-    this.span?.end();
-  }
-
-  // For async cleanup (if needed)
-  async [Symbol.asyncDispose]() {
-    this.span?.end();
-  }
-
-  get current() {
-    return this.span;
-  }
-}
+const traced = createTraced(tracer);
 
 const cache = new Cache("everyman-cinema-listings");
 
-function getCacheValue<T>(key: string): Promise<CachedValue<T> | undefined> {
-  return withSpan("getCacheValue", async (span) => {
+const getCacheValue = traced(
+  "getCacheValue",
+  async <T>(key: string, span: Span): Promise<CachedValue<T> | undefined> => {
     span.setAttribute("cache.key", key);
     return cache.get(key);
-  });
-}
+  }
+);
 
-function setCacheValue<T>(key: string, data: T, ttl: number): Promise<void> {
-  return withSpan("setCacheValue", async (span) => {
+const setCacheValue = traced(
+  "setCacheValue",
+  async <T>(key: string, data: T, ttl: number, span: Span): Promise<void> => {
     span.setAttribute("cache.key", key);
     const obj: CachedValue<T> = {
       key,
@@ -91,29 +63,8 @@ function setCacheValue<T>(key: string, data: T, ttl: number): Promise<void> {
     };
 
     return cache.set(key, obj, ttl);
-  });
-}
-
-function withSpan<T>(
-  spanName: string,
-  fn: (span: opentelemetry.Span) => T | Promise<T>
-): Promise<T> {
-  console.log(`Starting span: ${spanName}`);
-  return tracer.startActiveSpan(spanName, async (span) => {
-    try {
-      const result = await fn(span);
-      console.log(`Ending span: ${spanName}`);
-      span.end();
-      return result;
-    } catch (err) {
-      span.recordException(err as Error);
-      span.setStatus({ code: opentelemetry.SpanStatusCode.ERROR });
-      console.log(`Ending span with error: ${spanName}`);
-      span.end();
-      throw err;
-    }
-  });
-}
+  }
+);
 
 async function writeDebug(path: string, data: any) {
   if (process.env.DEBUG) {
@@ -148,8 +99,9 @@ const ONE_HOUR = 60 * 60 * 1000;
 const ONE_DAY = ONE_HOUR * 24;
 const TWO_DAYS = ONE_DAY * 2;
 
-async function getStaticSiteHash(): Promise<CachedValue<string>> {
-  return withSpan("getStaticSiteHash", async (span) => {
+const getStaticSiteHash = traced(
+  "getStaticSiteHash",
+  async (span: Span): Promise<CachedValue<string>> => {
     const cached = await getCacheValue<string>("static-site-hash");
     if (cached) {
       return cached;
@@ -180,13 +132,15 @@ async function getStaticSiteHash(): Promise<CachedValue<string>> {
 
     await setCacheValue("static-site-hash", staticSiteHash, ONE_DAY);
     return getStaticSiteHash();
-  });
-}
+  }
+);
 
-async function getStaticQueries(
-  staticSiteHash: string
-): Promise<CachedValue<StaticQueries>> {
-  return withSpan("getStaticQueries", async (span) => {
+const getStaticQueries = traced(
+  "getStaticQueries",
+  async (
+    staticSiteHash: string,
+    span: Span
+  ): Promise<CachedValue<StaticQueries>> => {
     const cached = await getCacheValue<StaticQueries>(
       `static-queries-${staticSiteHash}`
     );
@@ -215,13 +169,12 @@ async function getStaticQueries(
     );
 
     return getStaticQueries(staticSiteHash);
-  });
-}
+  }
+);
 
-async function getMoviesMetadata(
-  staticQueries: StaticQueries
-): Promise<MovieNode[]> {
-  return withSpan("getMoviesMetadata", async (span) => {
+const getMoviesMetadata = traced(
+  "getMoviesMetadata",
+  async (staticQueries: StaticQueries, span: Span): Promise<MovieNode[]> => {
     const filmsQueryData: FilmsMetadataResponse | undefined =
       staticQueries.find((v) => v.data?.allMovie?.nodes?.length > 0);
     if (!filmsQueryData) {
@@ -230,13 +183,12 @@ async function getMoviesMetadata(
     await writeDebug("responses/film-data.json", filmsQueryData);
 
     return filmsQueryData.data.allMovie.nodes;
-  });
-}
+  }
+);
 
-async function getTheatersMetadata(
-  staticQueries: StaticQueries
-): Promise<TheaterNode[]> {
-  return withSpan("getTheatersMetadata", async (span) => {
+const getTheatersMetadata = traced(
+  "getTheatersMetadata",
+  async (staticQueries: StaticQueries, span: Span): Promise<TheaterNode[]> => {
     const theatersQueryData: TheaterMetadataResponse | undefined =
       staticQueries.find(
         (v) => v.data?.allTheater?.nodes?.[0]?.__typename === "Theater"
@@ -247,8 +199,8 @@ async function getTheatersMetadata(
     await writeDebug("responses/theater-data.json", theatersQueryData);
 
     return theatersQueryData.data.allTheater.nodes;
-  });
-}
+  }
+);
 
 type BoxOfficeScheduleResponse = {
   theaterId: string;
@@ -261,11 +213,13 @@ type BoxOfficeScheduleResponse = {
   }[];
 }[];
 
-async function getBoxOfficeAPISchedule(
-  query: ScreeningsQuery,
-  allMovieIds: string[]
-): Promise<CachedValue<BoxOfficeScheduleResponse>> {
-  return withSpan("getBoxOfficeAPISchedule", async (span) => {
+const getBoxOfficeAPISchedule = traced(
+  "getBoxOfficeAPISchedule",
+  async (
+    query: ScreeningsQuery,
+    allMovieIds: string[],
+    span: Span
+  ): Promise<CachedValue<BoxOfficeScheduleResponse>> => {
     const cacheKey = JSON.stringify({
       query,
       allMovieIds,
@@ -349,8 +303,8 @@ async function getBoxOfficeAPISchedule(
 
     await setCacheValue(cacheKey, screeningsByMovieByDayByTheater, ONE_HOUR);
     return getBoxOfficeAPISchedule(query, allMovieIds);
-  });
-}
+  }
+);
 
 export interface ScreeningsQuery {
   fromDate: Date;
@@ -359,7 +313,6 @@ export interface ScreeningsQuery {
 }
 
 export const fetchMovieData = traced(
-  tracer,
   "fetchMovieData",
   async (query: ScreeningsQuery, span: Span) => {
     const { data: staticSiteHash, createdAt: staticSiteHashCreatedAtTs } =

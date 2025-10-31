@@ -6,8 +6,8 @@ import { SpanStatusCode, type Span, type Tracer } from "@opentelemetry/api";
  * - Injects the span as the last argument.
  */
 export function traced<
-  // Args is the tuple of the function’s arguments
-  Args extends any[],
+  // Args is the tuple of the function's arguments
+  Args extends unknown[],
   // R is the return type (sync or async)
   R
 >(
@@ -23,11 +23,18 @@ export function traced<
         return result;
       } catch (err) {
         span.recordException(err as Error);
-        span.setStatus({ code: SpanStatusCode.ERROR }); // SpanStatusCode.ERROR
+        span.setStatus({ code: SpanStatusCode.ERROR });
         throw err;
       } finally {
         span.end();
       }
     });
   };
+}
+
+export function createTraced(tracer: Tracer) {
+  return <Args extends unknown[], R>(
+    name: string,
+    fn: (...args: [...Args, Span]) => R
+  ) => traced<Args, R>(tracer, name, fn);
 }
