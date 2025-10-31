@@ -57,3 +57,12 @@ export const dateTimeFormatter = new Intl.DateTimeFormat("en-GB", {
   ...timeFormatOptions,
   ...dateFormatOptions,
 });
+
+export const DAYS_AHEAD_OPTIONS = [
+  { days: 7, label: "7d" },
+  { days: 14, label: "2w" },
+  { days: 21, label: "3w" },
+  { days: 35, label: "5w" },
+  { days: 56, label: "8w" },
+  { days: 70, label: "10w" },
+];
