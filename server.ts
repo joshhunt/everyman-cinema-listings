@@ -10,6 +10,11 @@ import { wrapErrors, hbs } from "./src/lib/express.ts";
 
 const port = process.env.PORT || 3000;
 
+console.log("(main otel)", {
+  OTEL_EXPORTER_OTLP_ENDPOINT: process.env.OTEL_EXPORTER_OTLP_ENDPOINT,
+  OTEL_LOG_LEVEL: process.env.OTEL_LOG_LEVEL,
+});
+
 const app = express();
 app.use(cookieParser());
 app.use(morgan("dev"));
