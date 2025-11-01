@@ -130,7 +130,7 @@ const getStaticSiteHash = traced(
       throw new Error("No hash found");
     }
 
-    await setCacheValue("static-site-hash", staticSiteHash, ONE_DAY);
+    await setCacheValue("static-site-hash", staticSiteHash, ONE_HOUR * 6);
     return getStaticSiteHash();
   }
 );
@@ -165,7 +165,7 @@ const getStaticQueries = traced(
     await setCacheValue(
       `static-queries-${staticSiteHash}`,
       allStaticQueries,
-      TWO_DAYS
+      ONE_DAY * 7
     );
 
     return getStaticQueries(staticSiteHash);
