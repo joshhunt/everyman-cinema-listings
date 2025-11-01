@@ -213,17 +213,29 @@ type BoxOfficeScheduleResponse = {
   }[];
 }[];
 
+function createScheduleCacheKey(
+  query: ScreeningsQuery,
+  allMovieIds: string[],
+  staticSiteHash: string
+): string {
+  return [
+    query.fromDate.toISOString(),
+    query.toDate.toISOString(),
+    query.theaters.toSorted().join(","),
+    allMovieIds.toSorted().join(","),
+    staticSiteHash,
+  ].join("|");
+}
+
 const getBoxOfficeAPISchedule = traced(
   "getBoxOfficeAPISchedule",
   async (
     query: ScreeningsQuery,
     allMovieIds: string[],
+    staticSiteHash: string,
     span: Span
   ): Promise<CachedValue<BoxOfficeScheduleResponse>> => {
-    const cacheKey = JSON.stringify({
-      query,
-      allMovieIds,
-    });
+    const cacheKey = createScheduleCacheKey(query, allMovieIds, staticSiteHash);
 
     const cached = await getCacheValue<BoxOfficeScheduleResponse>(cacheKey);
     if (cached) {
@@ -301,8 +313,8 @@ const getBoxOfficeAPISchedule = traced(
       screeningsByMovieByDayByTheater
     );
 
-    await setCacheValue(cacheKey, screeningsByMovieByDayByTheater, ONE_HOUR);
-    return getBoxOfficeAPISchedule(query, allMovieIds);
+    await setCacheValue(cacheKey, screeningsByMovieByDayByTheater, ONE_DAY);
+    return getBoxOfficeAPISchedule(query, allMovieIds, staticSiteHash);
   }
 );
 
@@ -335,7 +347,7 @@ export const fetchMovieData = traced(
     const result = [];
 
     const { data: boxOfficeSchedule, createdAt: boxOfficeScheduleCreatedAtTs } =
-      await getBoxOfficeAPISchedule(query, allMovieIds);
+      await getBoxOfficeAPISchedule(query, allMovieIds, staticSiteHash);
     const boxOfficeScheduleCreatedAt = new Date(boxOfficeScheduleCreatedAtTs);
 
     for (const theaterData of boxOfficeSchedule) {
