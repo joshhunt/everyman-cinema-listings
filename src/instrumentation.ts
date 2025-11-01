@@ -14,6 +14,11 @@ import {
 } from "@opentelemetry/sdk-trace-base";
 import { SpanKind, type Attributes } from "@opentelemetry/api";
 
+console.log("Starting OpenTelemetry SDK...", {
+  OTEL_EXPORTER_OTLP_ENDPOINT: process.env.OTEL_EXPORTER_OTLP_ENDPOINT,
+  OTEL_LOG_LEVEL: process.env.OTEL_LOG_LEVEL,
+});
+
 const traceExporter = new OTLPTraceExporter();
 
 const sdk = new NodeSDK({
