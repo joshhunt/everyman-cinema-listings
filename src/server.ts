@@ -10,7 +10,13 @@ import { logger } from "./o11y/logger.ts";
 import { bookingRedirects, httpRequestDuration, prometheusExporter } from "./o11y/otel.ts";
 import { config, DEFAULT_THEATERS_RANKED, EVERYMAN_WWW } from "./config.ts";
 import { cache } from "./everyman/cache.ts";
-import { byDayView, byMovieView, byScreenView, getSnapshot } from "./everyman/service.ts";
+import {
+  byDayView,
+  byMovieView,
+  byScreenView,
+  calendarView,
+  getSnapshot,
+} from "./everyman/service.ts";
 import { ticketingRedirect } from "./everyman/links.ts";
 import {
   connect,
@@ -23,6 +29,7 @@ import { readPrefs, writePref } from "./prefs.ts";
 import { byMoviePage } from "./views/byMovie.ts";
 import { byDayPage } from "./views/byDay.ts";
 import { byScreenPage } from "./views/byScreen.ts";
+import { calendarPage } from "./views/calendar.ts";
 import { connectPage } from "./views/connect.ts";
 
 const log = logger.child({ module: "server" });
@@ -119,6 +126,30 @@ app.get("/screen/:theaterId", async (c) => {
 
   const days = byScreenView(snapshot, theaterId, prefs);
   return c.html(byScreenPage(snapshot, days, theater, prefs, isConnected()));
+});
+
+app.get("/calendar", (c) => {
+  const prefs = readPrefs(c);
+  const first = prefs.theaters[0] ?? DEFAULT_THEATERS_RANKED[0];
+  return c.redirect(`/calendar/${first}`);
+});
+
+app.get("/calendar/:theaterId", async (c) => {
+  const prefs = readPrefs(c);
+  const theaterId = c.req.param("theaterId");
+
+  const theaterIds = prefs.theaters.includes(theaterId)
+    ? prefs.theaters
+    : [...prefs.theaters, theaterId];
+
+  const snapshot = await getSnapshot(theaterIds);
+  const theater = snapshot.theaters.find((t) => t.id === theaterId);
+  if (!theater) {
+    return c.text(`Unknown theater ${theaterId}`, 404);
+  }
+
+  const days = calendarView(snapshot, theaterId, prefs);
+  return c.html(calendarPage(snapshot, days, theater, prefs, isConnected()));
 });
 
 // --- Booking: attach the member session at click time, so the token never

@@ -22,7 +22,7 @@ export type Html = HtmlEscapedString | Promise<HtmlEscapedString>;
 
 export function layout(props: {
   title: string;
-  activeTab: "by-movie" | "by-day" | "by-screen" | "connect";
+  activeTab: "by-movie" | "by-day" | "by-screen" | "calendar" | "connect";
   body: Html;
 }): Html {
   return html`<!doctype html>
@@ -39,6 +39,7 @@ export function layout(props: {
             <a href="/" class="view-tab ${props.activeTab === "by-movie" ? "active" : ""}">By film</a>
             <a href="/day" class="view-tab ${props.activeTab === "by-day" ? "active" : ""}">By day</a>
             <a href="/screen" class="view-tab ${props.activeTab === "by-screen" ? "active" : ""}">By screen</a>
+            <a href="/calendar" class="view-tab ${props.activeTab === "calendar" ? "active" : ""}">Calendar</a>
             <a href="/connect" class="view-tab view-tab-end ${props.activeTab === "connect" ? "active" : ""}">Account</a>
           </nav>
           ${props.body}

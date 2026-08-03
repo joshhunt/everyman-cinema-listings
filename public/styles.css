@@ -352,6 +352,166 @@ td {
   color: var(--text-secondary);
 }
 
+/* Calendar view */
+.cal-legend {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  max-width: 60ch;
+  margin: 0 0 1.5rem;
+  line-height: 1.4;
+}
+
+.cal-day {
+  margin-bottom: 2rem;
+}
+
+.cal-scroll {
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+}
+
+.cal-grid {
+  --px-per-min: 2.4px;
+  --lane-height: 2rem;
+  --name-width: 5.5em;
+
+  min-width: calc(var(--name-width) + var(--span-total) * var(--px-per-min));
+}
+
+.cal-axis {
+  position: relative;
+  height: 1.1rem;
+  margin-left: var(--name-width);
+  /* Hour labels sit above the sticky name column as it passes underneath. */
+  z-index: 1;
+}
+
+.cal-hour {
+  position: absolute;
+  left: calc(var(--from) * var(--px-per-min));
+  transform: translateX(-50%);
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.cal-row {
+  display: flex;
+  align-items: stretch;
+  margin-bottom: 2px;
+}
+
+.cal-row-name {
+  width: var(--name-width);
+  min-width: var(--name-width);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+
+  /* Stay visible while the lanes scroll horizontally. */
+  position: sticky;
+  left: 0;
+  z-index: 4;
+  background: var(--background-color);
+}
+
+.cal-lane {
+  position: relative;
+  flex: 1;
+  height: var(--lane-height);
+  background: var(--card-background);
+  border-radius: 3px;
+  /* Hour gridlines. */
+  background-image: repeating-linear-gradient(
+    to right,
+    var(--border-color) 0 1px,
+    transparent 1px calc(60 * var(--px-per-min))
+  );
+}
+
+.cal-now {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  left: calc(var(--from) * var(--px-per-min));
+  width: 2px;
+  background: var(--warn-color);
+  z-index: 3;
+}
+
+.cal-block {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--from) * var(--px-per-min));
+  width: calc(var(--span) * var(--px-per-min));
+  overflow: hidden;
+
+  display: flex;
+  align-items: stretch;
+  border-radius: 3px;
+  border: 1px solid var(--border-color);
+  background: #2f3a45;
+  color: var(--text-primary);
+  text-decoration: none;
+  font-size: 0.75rem;
+
+  &:hover {
+    border-color: var(--accent-color);
+    z-index: 2;
+  }
+
+  &.is-seen {
+    opacity: var(--collapsed-opacity);
+  }
+
+  &.almost-full {
+    background: #4a3a26;
+  }
+}
+
+/* The ads and trailers before the feature. */
+.cal-ads {
+  width: calc(var(--ads) * var(--px-per-min));
+  min-width: 0;
+  flex-shrink: 0;
+  background: repeating-linear-gradient(
+    -45deg,
+    rgba(255, 255, 255, 0.06) 0 3px,
+    transparent 3px 6px
+  );
+  border-right: 1px solid var(--border-color);
+}
+
+.cal-block-body {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  padding: 0 0.35rem;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.cal-block-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 500;
+}
+
+.cal-block-time {
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .cal-grid {
+    --px-per-min: 1.8px;
+  }
+}
+
 /* Settings / meta footer */
 .meta-table {
   --spacing: 0.5rem;

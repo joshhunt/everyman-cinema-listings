@@ -331,6 +331,188 @@ export function byScreenView(
     }));
 }
 
+// --- Calendar (per-cinema): screens as lanes on a time axis
+
+/**
+ * The listed time is when the room opens; the feature starts 25 minutes later,
+ * after ads and trailers.
+ */
+export const ADS_MINUTES = 25;
+
+/**
+ * How long a screening occupies its screen.
+ *
+ * Everyman publish no runtime — `runtime` is null on every movie node — so this
+ * is derived from the schedule instead: the shortest gap between consecutive
+ * showings on one screen is ads + film + turnaround, which is exactly the
+ * occupancy a calendar wants to draw. It checks out against films whose runtime
+ * is known from the ticketing site.
+ */
+const DEFAULT_SLOT_MINUTES = 150;
+const MIN_SLOT_MINUTES = 45;
+const MAX_SLOT_MINUTES = 300;
+
+function minutesOfDay(startsAt: string): number {
+  return Number(startsAt.slice(11, 13)) * 60 + Number(startsAt.slice(14, 16));
+}
+
+function estimateSlotMinutes(snapshot: Snapshot): Map<string, number> {
+  // (theater, day, screen) -> [start minutes, movieId]
+  const lanes = new Map<string, { minute: number; movieId: string }[]>();
+
+  for (const theaterSchedule of snapshot.schedules) {
+    for (const { movie, days } of theaterSchedule.movies) {
+      for (const { day, screenings } of days) {
+        for (const screening of screenings) {
+          const key = `${theaterSchedule.theater.id}|${day}|${screenLabel(screening.screen?.name)}`;
+          const lane = lanes.get(key) ?? [];
+          lane.push({ minute: minutesOfDay(screening.startsAt), movieId: movie.id });
+          lanes.set(key, lane);
+        }
+      }
+    }
+  }
+
+  const shortestGap = new Map<string, number>();
+  for (const lane of lanes.values()) {
+    lane.sort((a, b) => a.minute - b.minute);
+    for (let i = 0; i < lane.length - 1; i++) {
+      const gap = lane[i + 1].minute - lane[i].minute;
+      if (gap < MIN_SLOT_MINUTES || gap > MAX_SLOT_MINUTES) continue;
+
+      const current = shortestGap.get(lane[i].movieId);
+      if (current === undefined || gap < current) {
+        shortestGap.set(lane[i].movieId, gap);
+      }
+    }
+  }
+  return shortestGap;
+}
+
+export interface CalendarBlock {
+  movie: MovieNode;
+  movieUrl: string;
+  bookUrl?: string;
+  seen: boolean;
+  almostFull: boolean;
+  badges: string[];
+  /** Minutes from midnight. */
+  startMinute: number;
+  slotMinutes: number;
+  listedTime: string;
+  filmStartTime: string;
+  endTime: string;
+  /** True when slotMinutes is derived rather than known. */
+  estimated: boolean;
+}
+
+export interface CalendarDay {
+  day: string;
+  label: string;
+  relative?: string;
+  /** Axis bounds, in minutes from midnight, rounded to whole hours. */
+  axisStart: number;
+  axisEnd: number;
+  hours: { minute: number; label: string }[];
+  /** Minutes from midnight for the "now" marker, when this day is today. */
+  nowMinute?: number;
+  screens: { label: string; blocks: CalendarBlock[] }[];
+}
+
+function formatMinute(minute: number): string {
+  const hours24 = Math.floor(minute / 60) % 24;
+  const mins = minute % 60;
+  const suffix = hours24 >= 12 ? "pm" : "am";
+  const h12 = hours24 % 12 === 0 ? 12 : hours24 % 12;
+  return `${h12}:${String(mins).padStart(2, "0")} ${suffix}`;
+}
+
+export function calendarView(
+  snapshot: Snapshot,
+  theaterId: string,
+  prefs: Prefs,
+): CalendarDay[] {
+  const theaterSchedule = snapshot.schedules.find((s) => s.theater.id === theaterId);
+  if (!theaterSchedule) return [];
+
+  const slotEstimates = estimateSlotMinutes(snapshot);
+  const today = todayISO();
+  const nowMinutes = (() => {
+    const local = new Date().toLocaleString("sv-SE", { timeZone: "Europe/London" });
+    return Number(local.slice(11, 13)) * 60 + Number(local.slice(14, 16));
+  })();
+
+  type Lane = Map<string, CalendarBlock[]>;
+  const byDay = new Map<string, Lane>();
+
+  for (const { movie, days } of theaterSchedule.movies) {
+    for (const { day, screenings } of clipDays(days, prefs)) {
+      const lanes: Lane = byDay.get(day) ?? new Map();
+      byDay.set(day, lanes);
+
+      for (const screening of screenings) {
+        const view = toScreeningView(screening);
+        const startMinute = minutesOfDay(screening.startsAt);
+        const estimate = slotEstimates.get(movie.id);
+        const slotMinutes = estimate ?? DEFAULT_SLOT_MINUTES;
+
+        const label = screenLabel(screening.screen?.name);
+        const blocks = lanes.get(label) ?? [];
+        blocks.push({
+          movie,
+          movieUrl: `https://www.everymancinema.com${movie.path}`,
+          bookUrl: view.url,
+          seen: prefs.seenMovieIds.includes(movie.id),
+          almostFull: view.almostFull,
+          badges: view.badges,
+          startMinute,
+          slotMinutes,
+          listedTime: view.time,
+          filmStartTime: formatMinute(startMinute + ADS_MINUTES),
+          endTime: formatMinute(startMinute + slotMinutes),
+          estimated: true,
+        });
+        lanes.set(label, blocks);
+      }
+    }
+  }
+
+  return [...byDay.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([day, lanes]) => {
+      const all = [...lanes.values()].flat();
+      const earliest = Math.min(...all.map((b) => b.startMinute));
+      const latest = Math.max(...all.map((b) => b.startMinute + b.slotMinutes));
+
+      const axisStart = Math.floor(earliest / 60) * 60;
+      const axisEnd = Math.ceil(latest / 60) * 60;
+
+      const hours: { minute: number; label: string }[] = [];
+      for (let minute = axisStart; minute <= axisEnd; minute += 60) {
+        hours.push({ minute, label: formatMinute(minute).replace(":00", "") });
+      }
+
+      return {
+        day,
+        label: formatDay(day),
+        relative: relativeDayName(day),
+        axisStart,
+        axisEnd,
+        hours,
+        nowMinute:
+          day === today && nowMinutes >= axisStart && nowMinutes <= axisEnd
+            ? nowMinutes
+            : undefined,
+        screens: [...lanes.entries()]
+          .sort(([a], [b]) => screenOrder(a) - screenOrder(b) || a.localeCompare(b))
+          .map(([label, blocks]) => ({
+            label,
+            blocks: blocks.sort((a, b) => a.startMinute - b.startMinute),
+          })),
+      };
+    });
+}
+
 export function byDayView(snapshot: Snapshot, theaterId: string, prefs: Prefs): ByDayDay[] {
   const theaterSchedule = snapshot.schedules.find((s) => s.theater.id === theaterId);
   if (!theaterSchedule) return [];

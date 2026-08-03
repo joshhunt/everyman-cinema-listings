@@ -11,6 +11,21 @@ cinemas. Scrapes the Everyman website's data feeds and renders two views:
 - **By screen** (`/screen`) — one cinema at a time, each day broken down by
   auditorium, so you can see what's playing where. Consecutive showings of the
   same film are grouped, so a screen's day reads as a programme.
+- **Calendar** (`/calendar`) — the same thing drawn to scale: screens as lanes
+  on a time axis, so gaps and overlaps are visible at a glance.
+
+## Screening times and durations
+
+The advertised time is when the room opens — the feature starts **25 minutes
+later**, after ads and trailers. The calendar shows that leading band hatched,
+and the time on each block is when the film actually starts.
+
+Everyman publish no runtime (`runtime` is null on every film in their feed), so
+block lengths are derived from the schedule instead: the shortest gap between
+consecutive showings on one screen, which is ads + film + changeover. That is
+the screen's real occupancy, and it means blocks never overlap. It matches
+reality well — The Odyssey comes out at 220 minutes against a true runtime of
+173 plus 25 of ads. End times are estimates and marked with a `~`.
 
 ## Running
 
