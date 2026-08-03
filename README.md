@@ -20,12 +20,22 @@ The advertised time is when the room opens — the feature starts **25 minutes
 later**, after ads and trailers. The calendar shows that leading band hatched,
 and the time on each block is when the film actually starts.
 
-Everyman publish no runtime (`runtime` is null on every film in their feed), so
-block lengths are derived from the schedule instead: the shortest gap between
-consecutive showings on one screen, which is ads + film + changeover. That is
-the screen's real occupancy, and it means blocks never overlap. It matches
-reality well — The Odyssey comes out at 220 minutes against a true runtime of
-173 plus 25 of ads. End times are estimates and marked with a `~`.
+Everyman's own feed has no runtime (`runtime` is null on every film), but
+Vista's booking platform — the vendor behind their ticketing — does, at
+`GET https://digital-api.everymancinema.com/ocapi/v1/films`.
+
+That API needs a bearer token which only Vista's web client is handed, and the
+pages exposing one block server-side fetches, so the import runs in your
+browser: `/connect` has a bookmarklet that copies the film list, which you paste
+back. Only titles and runtimes are sent to the server — never the token. Vista's
+film ids share nothing with the listings feed, so films are matched on title,
+with a token-subset fallback because Vista abbreviates for its tills
+("Throwback: The Fellowship of the Ring"). Runtimes never change, so this only
+needs repeating when new films appear.
+
+Anything unmatched falls back to an estimate derived from the schedule — the
+shortest gap between consecutive showings on one screen, which is ads + film +
+changeover. Those blocks get a dashed trailing edge and a `~` on the end time.
 
 ## Running
 

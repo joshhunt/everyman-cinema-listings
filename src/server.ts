@@ -8,7 +8,7 @@ import { compress } from "hono/compress";
 import { etag } from "hono/etag";
 import { logger } from "./o11y/logger.ts";
 import { bookingRedirects, httpRequestDuration, prometheusExporter } from "./o11y/otel.ts";
-import { config, DEFAULT_THEATERS_RANKED, EVERYMAN_WWW } from "./config.ts";
+import { config, DEFAULT_THEATERS_RANKED, EVERYMAN_WWW, VISTA_WEB } from "./config.ts";
 import { cache } from "./everyman/cache.ts";
 import {
   byDayView,
@@ -18,6 +18,7 @@ import {
   getSnapshot,
 } from "./everyman/service.ts";
 import { ticketingRedirect } from "./everyman/links.ts";
+import { importRuntimes, runtimeStats } from "./everyman/runtimes.ts";
 import {
   connect,
   disconnect,
@@ -149,7 +150,9 @@ app.get("/calendar/:theaterId", async (c) => {
   }
 
   const days = calendarView(snapshot, theaterId, prefs);
-  return c.html(calendarPage(snapshot, days, theater, prefs, isConnected()));
+  return c.html(
+    calendarPage(snapshot, days, theater, prefs, isConnected(), runtimeStats().known),
+  );
 });
 
 // --- Booking: attach the member session at click time, so the token never
@@ -188,7 +191,7 @@ function siteOrigin(c: Context): string {
   return `${proto}://${host}`;
 }
 
-app.get("/connect", (c) => c.html(connectPage(isConnected(), siteOrigin(c))));
+app.get("/connect", (c) => c.html(connectPage(isConnected(), siteOrigin(c), undefined, runtimeStats())));
 
 app.get("/disconnect", async (c) => {
   await disconnect();
@@ -227,6 +230,57 @@ app.post("/api/connect", async (c) => {
   return c.json({ ok: true }, 200, connectCors);
 });
 
+// Runtime import, sent by a bookmarklet running on Vista's web client. It
+// carries only public film metadata — never the API token it used.
+const runtimesCors: Record<string, string> = {
+  "Access-Control-Allow-Origin": VISTA_WEB,
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+  Vary: "Origin",
+};
+
+app.options("/api/runtimes", (c) => {
+  const headers = { ...runtimesCors };
+  if (c.req.header("access-control-request-private-network") === "true") {
+    headers["Access-Control-Allow-Private-Network"] = "true";
+  }
+  return c.body(null, 204, headers);
+});
+
+app.post("/api/runtimes", async (c) => {
+  const body = await c.req.json().catch(() => undefined);
+  const films = Array.isArray(body?.films) ? body.films : undefined;
+  if (!films) {
+    return c.json({ ok: false, error: "films array required" }, 400, runtimesCors);
+  }
+
+  const known = await importRuntimes(films);
+  return c.json({ ok: true, known }, 200, runtimesCors);
+});
+
+app.post("/connect/runtimes", async (c) => {
+  const form = await c.req.parseBody();
+  const pasted = typeof form.films === "string" ? form.films.trim() : "";
+
+  try {
+    const parsed = JSON.parse(pasted);
+    const films = Array.isArray(parsed) ? parsed : parsed?.films;
+    if (!Array.isArray(films) || films.length === 0) throw new Error("no films");
+    await importRuntimes(films);
+  } catch {
+    return c.html(
+      connectPage(
+        isConnected(),
+        siteOrigin(c),
+        "That didn't look like a runtime list — copy it again and retry.",
+        runtimeStats(),
+      ),
+    );
+  }
+
+  return c.redirect("/connect");
+});
+
 /**
  * Same-origin fallback for when the bookmarklet's cross-origin POST can't get
  * through — an http:// deployment (blocked as mixed content from their https
@@ -243,7 +297,14 @@ app.post("/connect/paste", async (c) => {
     }
     await connect(parsed.token, parsed.refreshToken);
   } catch {
-    return c.html(connectPage(isConnected(), siteOrigin(c), "That didn't look like a session blob — copy it again and retry."));
+    return c.html(
+      connectPage(
+        isConnected(),
+        siteOrigin(c),
+        "That didn't look like a session blob — copy it again and retry.",
+        runtimeStats(),
+      ),
+    );
   }
 
   return c.redirect("/connect");

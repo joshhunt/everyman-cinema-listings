@@ -20,6 +20,9 @@ export const WEBSITE_ID =
   "V2Vic2l0ZU1hbmFnZXJXZWJzaXRlOmIyNWQwN2RkLTczYTYtNDg1Ny1iODAzLWZiMmMyM2NiYjFkYQ==";
 
 export const EVERYMAN_WWW = "https://www.everymancinema.com";
+/** Vista's newer web client, which is where film runtimes are imported from. */
+export const VISTA_WEB = "https://web.everymancinema.com";
+export const VISTA_OCAPI = "https://digital-api.everymancinema.com/ocapi/v1";
 export const PURCHASE_BASE = "https://purchase.everymancinema.com";
 export const CMS_ASSETS_BASE = "https://cms-assets.webediamovies.pro/prod/everyman";
 

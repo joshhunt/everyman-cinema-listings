@@ -472,6 +472,25 @@ td {
   }
 }
 
+/* No known runtime: the length is a guess, so soften the trailing edge. */
+.cal-block.is-estimated {
+  border-right-style: dashed;
+  border-right-color: var(--text-secondary);
+}
+
+.cal-swatch {
+  display: inline-block;
+  width: 1.1em;
+  height: 0.75em;
+  vertical-align: -0.1em;
+  border: 1px solid var(--border-color);
+  background: #2f3a45;
+
+  &.is-estimated {
+    border-right: 1px dashed var(--text-secondary);
+  }
+}
+
 /* The ads and trailers before the feature. */
 .cal-ads {
   width: calc(var(--ads) * var(--px-per-min));

@@ -9,6 +9,7 @@ import {
   fetchStaticQueries,
 } from "./client.ts";
 import { showtimeId } from "./links.ts";
+import { lookupRuntime } from "./runtimes.ts";
 import type { MovieNode, TheaterNode, UpstreamScreening } from "./types.ts";
 import type { Prefs } from "../prefs.ts";
 
@@ -398,11 +399,15 @@ export interface CalendarBlock {
   badges: string[];
   /** Minutes from midnight. */
   startMinute: number;
+  /** Ads plus the feature: how long the screening really runs. */
   slotMinutes: number;
+  /** Width to draw, clipped so a block never laps over the next showing. */
+  drawMinutes: number;
+  runtimeMinutes?: number;
   listedTime: string;
   filmStartTime: string;
   endTime: string;
-  /** True when slotMinutes is derived rather than known. */
+  /** False when slotMinutes came from a known runtime. */
   estimated: boolean;
 }
 
@@ -453,8 +458,13 @@ export function calendarView(
       for (const screening of screenings) {
         const view = toScreeningView(screening);
         const startMinute = minutesOfDay(screening.startsAt);
-        const estimate = slotEstimates.get(movie.id);
-        const slotMinutes = estimate ?? DEFAULT_SLOT_MINUTES;
+
+        // A known runtime gives the exact answer the user cares about: ads plus
+        // the feature. Otherwise fall back to the gap derived from the schedule.
+        const runtimeMinutes = lookupRuntime(movie.title);
+        const slotMinutes = runtimeMinutes
+          ? ADS_MINUTES + runtimeMinutes
+          : (slotEstimates.get(movie.id) ?? DEFAULT_SLOT_MINUTES);
 
         const label = screenLabel(screening.screen?.name);
         const blocks = lanes.get(label) ?? [];
@@ -467,10 +477,12 @@ export function calendarView(
           badges: view.badges,
           startMinute,
           slotMinutes,
+          drawMinutes: slotMinutes,
+          runtimeMinutes,
           listedTime: view.time,
           filmStartTime: formatMinute(startMinute + ADS_MINUTES),
           endTime: formatMinute(startMinute + slotMinutes),
-          estimated: true,
+          estimated: runtimeMinutes === undefined,
         });
         lanes.set(label, blocks);
       }
@@ -482,7 +494,7 @@ export function calendarView(
     .map(([day, lanes]) => {
       const all = [...lanes.values()].flat();
       const earliest = Math.min(...all.map((b) => b.startMinute));
-      const latest = Math.max(...all.map((b) => b.startMinute + b.slotMinutes));
+      const latest = Math.max(...all.map((b) => b.startMinute + b.drawMinutes));
 
       const axisStart = Math.floor(earliest / 60) * 60;
       const axisEnd = Math.ceil(latest / 60) * 60;
@@ -505,10 +517,18 @@ export function calendarView(
             : undefined,
         screens: [...lanes.entries()]
           .sort(([a], [b]) => screenOrder(a) - screenOrder(b) || a.localeCompare(b))
-          .map(([label, blocks]) => ({
-            label,
-            blocks: blocks.sort((a, b) => a.startMinute - b.startMinute),
-          })),
+          .map(([label, blocks]) => {
+            blocks.sort((a, b) => a.startMinute - b.startMinute);
+
+            // Keep blocks from lapping over the next showing, which would
+            // otherwise happen wherever a runtime is longer than the schedule
+            // allows for. The tooltip still reports the true end time.
+            for (let i = 0; i < blocks.length - 1; i++) {
+              const gap = blocks[i + 1].startMinute - blocks[i].startMinute;
+              blocks[i].drawMinutes = Math.min(blocks[i].slotMinutes, gap);
+            }
+            return { label, blocks };
+          }),
       };
     });
 }

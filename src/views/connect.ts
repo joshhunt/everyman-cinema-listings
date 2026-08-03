@@ -1,4 +1,5 @@
 import { html, layout, type Html } from "./layout.ts";
+import { ADS_MINUTES } from "../everyman/service.ts";
 
 /**
  * Read the Everyman site's own `loyalty` cookie and hand the session tokens
@@ -15,7 +16,23 @@ function copyBookmarklet(): string {
   return `javascript:(async()=>{try{const m=document.cookie.match(/(?:^|;\\s*)loyalty=([^;]*)/);if(!m){alert('Not logged in to Everyman. Log in first, then click again.');return}const d=JSON.parse(decodeURIComponent(m[1]));const s=JSON.stringify({token:d.token,refreshToken:d.refreshToken});await navigator.clipboard.writeText(s);alert('Session copied. Paste it into the listings site to finish.')}catch(e){alert('Failed: '+e.message)}})()`;
 }
 
-export function connectPage(connected: boolean, origin: string, error?: string): Html {
+/**
+ * Import film runtimes from Vista's OCAPI. Runs on their web client, which is
+ * the only place a browsing token is handed out; the token stays in the browser
+ * and only titles and runtimes are sent here.
+ */
+function runtimesBookmarklet(): string {
+  // Copies to the clipboard rather than posting here directly: that origin
+  // stalls cross-origin requests to a private address, so a paste is reliable.
+  return `javascript:(async()=>{try{const h=await (await fetch('/')).text();const m=h.match(/eyJ[A-Za-z0-9_-]{20,}\\.[A-Za-z0-9_-]{20,}\\.[A-Za-z0-9_-]+/);if(!m){alert('No API token found. Make sure you are on web.everymancinema.com.');return}const r=await fetch('https://digital-api.everymancinema.com/ocapi/v1/films',{headers:{Authorization:'Bearer '+m[0],Accept:'application/json'}});if(!r.ok){alert('Vista API returned HTTP '+r.status);return}const j=await r.json();const a=j.films||j;const films=a.filter(f=>f.runtimeInMinutes).map(f=>({title:(f.title&&f.title.text)||f.title,runtimeInMinutes:f.runtimeInMinutes}));await navigator.clipboard.writeText(JSON.stringify({films}));alert('Copied '+films.length+' runtimes. Paste them into the listings site to finish.')}catch(e){alert('Failed: '+e.message)}})()`;
+}
+
+export function connectPage(
+  connected: boolean,
+  origin: string,
+  error?: string,
+  runtimes?: { known: number; updatedAt?: string },
+): Html {
   const insecure = origin.startsWith("http://") && !/^http:\/\/(localhost|127\.0\.0\.1)/.test(origin);
 
   const body = html`
@@ -81,6 +98,33 @@ export function connectPage(connected: boolean, origin: string, error?: string):
       ${connected
         ? html`<p><a class="action-link" href="/disconnect">Disconnect and forget the session</a></p>`
         : ""}
+
+      <h2 class="section-title">Film runtimes</h2>
+      <p class="status-line">
+        ${runtimes && runtimes.known > 0
+          ? html`<strong class="status-ok">${runtimes.known} runtimes known</strong> — the calendar
+              draws blocks as ${ADS_MINUTES} min of ads plus the film.`
+          : html`<strong class="status-off">none imported</strong> — the calendar estimates block
+              lengths from the schedule.`}
+      </p>
+      <p>
+        Everyman's listings feed has no runtime for any film. Vista's booking platform does, but
+        its API needs a token that only their web client is given, and that page blocks
+        server-side requests. So the import runs in your browser.
+      </p>
+      <ol>
+        <li>Drag this to your bookmarks bar: <a class="bookmarklet" href="${runtimesBookmarklet()}">Copy Everyman runtimes</a></li>
+        <li>Open <a href="https://web.everymancinema.com/" target="_blank" rel="noreferrer">web.everymancinema.com</a> and click the bookmark — it copies the film list.</li>
+        <li>Paste it here:</li>
+      </ol>
+      <form method="post" action="/connect/runtimes" class="paste-form">
+        <textarea name="films" rows="3" placeholder='{"films":[{"title":"…","runtimeInMinutes":120}]}' required></textarea>
+        <button type="submit">Import runtimes</button>
+      </form>
+      <p class="note">
+        Only film titles and runtimes are sent here — the API token stays in your browser. Runtimes
+        don't change, so this only needs repeating when new films appear.
+      </p>
     </div>
   `;
 

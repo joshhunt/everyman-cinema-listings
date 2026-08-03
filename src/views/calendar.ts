@@ -9,7 +9,9 @@ function blockTitle(block: CalendarBlock): string {
     `${block.movie.title}`,
     `doors ${block.listedTime}`,
     `film starts ${block.filmStartTime}`,
-    `ends ~${block.endTime}`,
+    block.estimated
+      ? `ends ~${block.endTime} (estimated)`
+      : `ends ${block.endTime} (${block.runtimeMinutes} min film)`,
   ];
   if (block.almostFull) parts.push("almost full");
   if (block.badges.length > 0) parts.push(block.badges.join(", "));
@@ -21,10 +23,11 @@ function blockEl(block: CalendarBlock, axisStart: number): Html {
     "cal-block",
     block.seen ? "is-seen" : "",
     block.almostFull ? "almost-full" : "",
+    block.estimated ? "is-estimated" : "",
   ].join(" ");
 
   // Position and width are driven by minutes; CSS turns them into pixels.
-  const style = `--from:${block.startMinute - axisStart};--span:${block.slotMinutes};--ads:${ADS_MINUTES}`;
+  const style = `--from:${block.startMinute - axisStart};--span:${block.drawMinutes};--ads:${ADS_MINUTES}`;
 
   return html`<a
     class="${classes}"
@@ -46,6 +49,7 @@ export function calendarPage(
   selectedTheater: TheaterNode,
   prefs: Prefs,
   connected: boolean,
+  runtimesKnown: number,
 ): Html {
   const selectedTheaters = prefs.theaters
     .map((id) => snapshot.theaters.find((t) => t.id === id))
@@ -63,10 +67,16 @@ export function calendarPage(
     </nav>
 
     <p class="cal-legend">
-      Blocks span the whole slot. The dim leading band is the
-      ${ADS_MINUTES} minutes of ads and trailers, so the time shown is when the film
-      actually starts. End times are estimated from the schedule — Everyman don't publish
-      runtimes.
+      The hatched band is the ${ADS_MINUTES} minutes of ads and trailers, so the time on each
+      block is when the film actually starts.
+      ${runtimesKnown > 0
+        ? html`Blocks run ${ADS_MINUTES} min + runtime, from
+            ${runtimesKnown} imported runtimes. A
+            <span class="cal-swatch is-estimated"></span> dashed edge means the runtime is unknown
+            and the length is estimated from the schedule —
+            <a href="/connect">import runtimes</a> to fix those.`
+        : html`Lengths are estimated from the schedule.
+            <a href="/connect">Import runtimes</a> for exact ones.`}
     </p>
 
     <div class="cal-days">
