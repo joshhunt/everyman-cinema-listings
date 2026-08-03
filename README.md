@@ -8,6 +8,9 @@ cinemas. Scrapes the Everyman website's data feeds and renders two views:
 - **By day** (`/day`) — one cinema at a time: what's showing today, tomorrow,
   and each day after, with genre and screening badges (baby club, CC,
   silver screen, almost full…).
+- **By screen** (`/screen`) — one cinema at a time, each day broken down by
+  auditorium, so you can see what's playing where. Consecutive showings of the
+  same film are grouped, so a screen's day reads as a programme.
 
 ## Running
 
@@ -36,6 +39,14 @@ has to be handed over once, from a page on their site.
 
 Open `/connect` and use the bookmarklet there while logged in to Everyman. After
 that, booking links go straight to seat selection, signed in, in one redirect.
+
+The bookmarklet targets whatever host you load `/connect` from (set
+`SITE_ORIGIN` if a proxy rewrites `Host`). Two deployment notes: serve this over
+**https**, because Chrome blocks requests from Everyman's https pages to an
+`http://` origin; and if the server is on a LAN or VPN address, Chrome's
+private-network check applies — the preflight opts in, but if a browser still
+refuses, `/connect` has a copy-and-paste fallback that avoids cross-origin
+requests entirely.
 
 Booking links point at this app's own `/book/<id>`, which attaches a
 freshly-refreshed token at click time. That keeps the token out of the page

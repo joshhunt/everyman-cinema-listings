@@ -235,6 +235,102 @@ export interface ByDayMovie {
   screenings: ScreeningView[];
 }
 
+// --- By screen (per-cinema): what is showing in which auditorium, per day
+
+export interface ByScreenDay {
+  day: string;
+  label: string;
+  relative?: string;
+  screens: ByScreenScreen[];
+}
+
+export interface ByScreenScreen {
+  label: string;
+  /** Consecutive runs of the same film, in time order. */
+  blocks: ByScreenBlock[];
+}
+
+export interface ByScreenBlock {
+  movie: MovieNode;
+  movieUrl: string;
+  seen: boolean;
+  screenings: ScreeningView[];
+}
+
+const UNKNOWN_SCREEN = "Screen ?";
+
+/** Normalise the inconsistent upstream names to a single "Screen N" form. */
+function screenLabel(name: string | undefined): string {
+  const trimmed = name?.trim();
+  if (!trimmed) return UNKNOWN_SCREEN;
+  return /^\d+$/.test(trimmed) ? `Screen ${trimmed}` : trimmed;
+}
+
+/** Numeric where possible, so Screen 10 sorts after Screen 9. */
+function screenOrder(label: string): number {
+  const match = label.match(/\d+/);
+  return match ? Number(match[0]) : Number.MAX_SAFE_INTEGER;
+}
+
+export function byScreenView(
+  snapshot: Snapshot,
+  theaterId: string,
+  prefs: Prefs,
+): ByScreenDay[] {
+  const theaterSchedule = snapshot.schedules.find((s) => s.theater.id === theaterId);
+  if (!theaterSchedule) return [];
+
+  // day -> screen label -> screenings, keeping the movie alongside each one.
+  type Entry = { movie: MovieNode; screening: UpstreamScreening };
+  const byDay = new Map<string, Map<string, Entry[]>>();
+
+  for (const { movie, days } of theaterSchedule.movies) {
+    for (const { day, screenings } of clipDays(days, prefs)) {
+      const screens = byDay.get(day) ?? new Map<string, Entry[]>();
+      byDay.set(day, screens);
+
+      for (const screening of screenings) {
+        const label = screenLabel(screening.screen?.name);
+        const entries = screens.get(label) ?? [];
+        entries.push({ movie, screening });
+        screens.set(label, entries);
+      }
+    }
+  }
+
+  return [...byDay.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([day, screens]) => ({
+      day,
+      label: formatDay(day),
+      relative: relativeDayName(day),
+      screens: [...screens.entries()]
+        .sort(([a], [b]) => screenOrder(a) - screenOrder(b) || a.localeCompare(b))
+        .map(([label, entries]) => {
+          entries.sort((a, b) => a.screening.startsAt.localeCompare(b.screening.startsAt));
+
+          // Collapse consecutive showings of the same film into one block, so a
+          // screen's day reads as a programme rather than a repeated title.
+          const blocks: ByScreenBlock[] = [];
+          for (const { movie, screening } of entries) {
+            const last = blocks.at(-1);
+            if (last?.movie.id === movie.id) {
+              last.screenings.push(toScreeningView(screening));
+            } else {
+              blocks.push({
+                movie,
+                movieUrl: `https://www.everymancinema.com${movie.path}`,
+                seen: prefs.seenMovieIds.includes(movie.id),
+                screenings: [toScreeningView(screening)],
+              });
+            }
+          }
+
+          return { label, blocks };
+        }),
+    }));
+}
+
 export function byDayView(snapshot: Snapshot, theaterId: string, prefs: Prefs): ByDayDay[] {
   const theaterSchedule = snapshot.schedules.find((s) => s.theater.id === theaterId);
   if (!theaterSchedule) return [];

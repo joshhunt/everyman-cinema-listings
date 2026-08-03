@@ -39,6 +39,11 @@ export interface UpstreamScreening {
   isExpired: boolean;
   data: { ticketing: ScreeningTicketing[] };
   occupancy?: { rate: number };
+  /**
+   * Auditorium. Naming is inconsistent between cinemas — and even within one:
+   * "Screen 2" at some, a bare "2" at others. Occasionally absent.
+   */
+  screen?: { name?: string };
 }
 
 /** Response of the box office schedule API, keyed by theater id. */

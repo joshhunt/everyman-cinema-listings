@@ -475,6 +475,97 @@ td {
   font-size: 0.85rem;
 }
 
+.status-error {
+  border-left: 3px solid var(--warn-color);
+}
+
+.paste-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-start;
+
+  textarea {
+    width: 100%;
+    font-family: inherit;
+    font-size: 0.8rem;
+    background: var(--card-background);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 0.5rem;
+  }
+
+  button {
+    font: inherit;
+    cursor: pointer;
+    background: var(--card-background);
+    color: var(--text-primary);
+    border: 1px solid var(--accent-color);
+    border-radius: 4px;
+    padding: 0.3rem 0.9rem;
+  }
+}
+
+/* By-screen view */
+.screen-table {
+  font-size: 0.9rem;
+
+  td {
+    text-align: left;
+    vertical-align: baseline;
+    padding-bottom: 0.5rem;
+  }
+}
+
+.screen-name-cell {
+  width: 5.5em;
+  min-width: 5.5em;
+  padding-right: 1rem;
+  white-space: nowrap;
+  color: var(--text-secondary);
+}
+
+.screen-programme-cell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.9rem;
+  align-items: baseline;
+}
+
+.screen-block {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.3rem 0.5rem;
+
+  &.is-seen {
+    opacity: var(--collapsed-opacity);
+  }
+
+  /* Times align in columns elsewhere; here they follow their title directly. */
+  .time-slot {
+    min-width: 0;
+  }
+
+  /* Separate one film's block from the next. */
+  &:not(:first-child)::before {
+    content: "·";
+    color: var(--border-color);
+  }
+}
+
+.screen-block-title {
+  color: var(--text-primary);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.screen-block-title:hover {
+  color: var(--accent-color);
+  text-decoration: underline;
+}
+
 /* Responsive styles */
 @media (max-width: 768px) {
   :root {
@@ -507,5 +598,25 @@ td {
 
   .day-table td.times-cell {
     display: flex;
+  }
+
+  .screen-table tr {
+    display: block;
+    padding-bottom: 0.6rem;
+  }
+
+  .screen-table td {
+    display: block;
+    padding-bottom: 0.15rem;
+  }
+
+  .screen-table td.screen-programme-cell {
+    display: flex;
+  }
+
+  .screen-name-cell {
+    width: auto;
+    color: var(--text-primary);
+    font-weight: 600;
   }
 }

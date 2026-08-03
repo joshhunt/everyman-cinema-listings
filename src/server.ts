@@ -3,14 +3,14 @@ import "./o11y/otel.ts";
 import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { RESPONSE_ALREADY_SENT } from "@hono/node-server/utils/response";
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { compress } from "hono/compress";
 import { etag } from "hono/etag";
 import { logger } from "./o11y/logger.ts";
 import { bookingRedirects, httpRequestDuration, prometheusExporter } from "./o11y/otel.ts";
 import { config, DEFAULT_THEATERS_RANKED, EVERYMAN_WWW } from "./config.ts";
 import { cache } from "./everyman/cache.ts";
-import { byDayView, byMovieView, getSnapshot } from "./everyman/service.ts";
+import { byDayView, byMovieView, byScreenView, getSnapshot } from "./everyman/service.ts";
 import { ticketingRedirect } from "./everyman/links.ts";
 import {
   connect,
@@ -22,6 +22,7 @@ import {
 import { readPrefs, writePref } from "./prefs.ts";
 import { byMoviePage } from "./views/byMovie.ts";
 import { byDayPage } from "./views/byDay.ts";
+import { byScreenPage } from "./views/byScreen.ts";
 import { connectPage } from "./views/connect.ts";
 
 const log = logger.child({ module: "server" });
@@ -96,6 +97,30 @@ app.get("/day/:theaterId", async (c) => {
   return c.html(byDayPage(snapshot, days, theater, prefs, isConnected()));
 });
 
+app.get("/screen", (c) => {
+  const prefs = readPrefs(c);
+  const first = prefs.theaters[0] ?? DEFAULT_THEATERS_RANKED[0];
+  return c.redirect(`/screen/${first}`);
+});
+
+app.get("/screen/:theaterId", async (c) => {
+  const prefs = readPrefs(c);
+  const theaterId = c.req.param("theaterId");
+
+  const theaterIds = prefs.theaters.includes(theaterId)
+    ? prefs.theaters
+    : [...prefs.theaters, theaterId];
+
+  const snapshot = await getSnapshot(theaterIds);
+  const theater = snapshot.theaters.find((t) => t.id === theaterId);
+  if (!theater) {
+    return c.text(`Unknown theater ${theaterId}`, 404);
+  }
+
+  const days = byScreenView(snapshot, theaterId, prefs);
+  return c.html(byScreenPage(snapshot, days, theater, prefs, isConnected()));
+});
+
 // --- Booking: attach the member session at click time, so the token never
 // appears in a page, a Referer header, or a browser history entry.
 
@@ -116,7 +141,23 @@ app.get("/book/:showtimeId", async (c) => {
 
 // --- Account connection
 
-app.get("/connect", (c) => c.html(connectPage(isConnected())));
+/**
+ * The origin to bake into the bookmarklet. Derived from the request so it is
+ * correct on whatever host this is deployed to, with SITE_ORIGIN as an override
+ * for when it sits behind a proxy that rewrites Host.
+ */
+function siteOrigin(c: Context): string {
+  if (process.env.SITE_ORIGIN) return process.env.SITE_ORIGIN;
+
+  const url = new URL(c.req.url);
+  const forwardedProto = c.req.header("x-forwarded-proto")?.split(",")[0]?.trim();
+  const forwardedHost = c.req.header("x-forwarded-host")?.split(",")[0]?.trim();
+  const proto = forwardedProto || url.protocol.replace(":", "");
+  const host = forwardedHost || c.req.header("host") || url.host;
+  return `${proto}://${host}`;
+}
+
+app.get("/connect", (c) => c.html(connectPage(isConnected(), siteOrigin(c))));
 
 app.get("/disconnect", async (c) => {
   await disconnect();
@@ -125,14 +166,22 @@ app.get("/disconnect", async (c) => {
 
 // The bookmarklet runs on everymancinema.com, so this one endpoint is
 // cross-origin. Only that origin may call it, and only to hand over tokens.
-const connectCors = {
+const connectCors: Record<string, string> = {
   "Access-Control-Allow-Origin": EVERYMAN_WWW,
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type",
   Vary: "Origin",
 };
 
-app.options("/api/connect", (c) => c.body(null, 204, connectCors));
+app.options("/api/connect", (c) => {
+  const headers = { ...connectCors };
+  // Chrome gates requests from a public site to a private-network address
+  // (a LAN/VPN host, or localhost) behind this opt-in on the preflight.
+  if (c.req.header("access-control-request-private-network") === "true") {
+    headers["Access-Control-Allow-Private-Network"] = "true";
+  }
+  return c.body(null, 204, headers);
+});
 
 app.post("/api/connect", async (c) => {
   const body = await c.req.json().catch(() => undefined);
@@ -145,6 +194,28 @@ app.post("/api/connect", async (c) => {
 
   await connect(token, refreshToken);
   return c.json({ ok: true }, 200, connectCors);
+});
+
+/**
+ * Same-origin fallback for when the bookmarklet's cross-origin POST can't get
+ * through — an http:// deployment (blocked as mixed content from their https
+ * page) or a browser refusing the private-network preflight.
+ */
+app.post("/connect/paste", async (c) => {
+  const form = await c.req.parseBody();
+  const pasted = typeof form.session === "string" ? form.session.trim() : "";
+
+  try {
+    const parsed = JSON.parse(pasted);
+    if (typeof parsed?.token !== "string" || typeof parsed?.refreshToken !== "string") {
+      throw new Error("missing token or refreshToken");
+    }
+    await connect(parsed.token, parsed.refreshToken);
+  } catch {
+    return c.html(connectPage(isConnected(), siteOrigin(c), "That didn't look like a session blob — copy it again and retry."));
+  }
+
+  return c.redirect("/connect");
 });
 
 // --- Settings (cookie-backed, GET + redirect back)
