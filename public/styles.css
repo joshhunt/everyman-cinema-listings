@@ -231,11 +231,6 @@ td {
   color: var(--warn-color);
 }
 
-.time-flag {
-  color: var(--text-secondary);
-  font-size: 0.7em;
-}
-
 /* By-day view */
 .cinema-tabs {
   display: flex;
@@ -353,14 +348,6 @@ td {
 }
 
 /* Calendar view */
-.cal-legend {
-  color: var(--text-secondary);
-  font-size: 0.8rem;
-  max-width: 60ch;
-  margin: 0 0 1.5rem;
-  line-height: 1.4;
-}
-
 .cal-day {
   margin-bottom: 2rem;
 }
@@ -372,7 +359,8 @@ td {
 
 .cal-grid {
   --px-per-min: 2.4px;
-  --lane-height: 2rem;
+  /* Tall enough for a title row plus a row of tags. */
+  --lane-height: 2.7rem;
   --name-width: 5.5em;
 
   min-width: calc(var(--name-width) + var(--span-total) * var(--px-per-min));
@@ -478,19 +466,6 @@ td {
   border-right-color: var(--text-secondary);
 }
 
-.cal-swatch {
-  display: inline-block;
-  width: 1.1em;
-  height: 0.75em;
-  vertical-align: -0.1em;
-  border: 1px solid var(--border-color);
-  background: #2f3a45;
-
-  &.is-estimated {
-    border-right: 1px dashed var(--text-secondary);
-  }
-}
-
 /* The ads and trailers before the feature. */
 .cal-ads {
   width: calc(var(--ads) * var(--px-per-min));
@@ -506,12 +481,21 @@ td {
 
 .cal-block-body {
   display: flex;
-  align-items: baseline;
-  gap: 0.35rem;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.15rem;
   padding: 0 0.35rem;
   min-width: 0;
   overflow: hidden;
   white-space: nowrap;
+}
+
+.cal-block-line {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .cal-block-title {
@@ -523,6 +507,15 @@ td {
 .cal-block-time {
   color: var(--text-secondary);
   flex-shrink: 0;
+}
+
+.cal-block-badges {
+  gap: 0.2rem;
+
+  .badge {
+    font-size: 0.6rem;
+    line-height: 1.3;
+  }
 }
 
 @media (max-width: 768px) {
@@ -686,64 +679,6 @@ td {
   }
 }
 
-/* By-screen view */
-.screen-table {
-  font-size: 0.9rem;
-
-  td {
-    text-align: left;
-    vertical-align: baseline;
-    padding-bottom: 0.5rem;
-  }
-}
-
-.screen-name-cell {
-  width: 5.5em;
-  min-width: 5.5em;
-  padding-right: 1rem;
-  white-space: nowrap;
-  color: var(--text-secondary);
-}
-
-.screen-programme-cell {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem 0.9rem;
-  align-items: baseline;
-}
-
-.screen-block {
-  display: inline-flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.3rem 0.5rem;
-
-  &.is-seen {
-    opacity: var(--collapsed-opacity);
-  }
-
-  /* Times align in columns elsewhere; here they follow their title directly. */
-  .time-slot {
-    min-width: 0;
-  }
-
-  /* Separate one film's block from the next. */
-  &:not(:first-child)::before {
-    content: "·";
-    color: var(--border-color);
-  }
-}
-
-.screen-block-title {
-  color: var(--text-primary);
-  text-decoration: none;
-  font-weight: 500;
-}
-
-.screen-block-title:hover {
-  color: var(--accent-color);
-  text-decoration: underline;
-}
 
 /* Responsive styles */
 @media (max-width: 768px) {
@@ -779,23 +714,4 @@ td {
     display: flex;
   }
 
-  .screen-table tr {
-    display: block;
-    padding-bottom: 0.6rem;
-  }
-
-  .screen-table td {
-    display: block;
-    padding-bottom: 0.15rem;
-  }
-
-  .screen-table td.screen-programme-cell {
-    display: flex;
-  }
-
-  .screen-name-cell {
-    width: auto;
-    color: var(--text-primary);
-    font-weight: 600;
-  }
 }

@@ -7,6 +7,8 @@ export interface Prefs {
   theaters: string[];
   daysAhead: number;
   seenMovieIds: string[];
+  /** Last cinema viewed in a per-cinema view, so switching view keeps it. */
+  lastTheaterId?: string;
 }
 
 const ONE_YEAR_SECONDS = 365 * 24 * 60 * 60;
@@ -20,6 +22,7 @@ export function readPrefs(c: Context): Prefs {
     theaters: theaters ? theaters.split(",").filter(Boolean) : [...DEFAULT_THEATERS_RANKED],
     daysAhead: Number.isFinite(daysAhead) && daysAhead > 0 ? daysAhead : DEFAULT_DAYS_AHEAD,
     seenMovieIds: seen ? seen.split(",").filter(Boolean) : [],
+    lastTheaterId: getCookie(c, "lastTheater") || undefined,
   };
 }
 

@@ -8,11 +8,11 @@ cinemas. Scrapes the Everyman website's data feeds and renders two views:
 - **By day** (`/day`) — one cinema at a time: what's showing today, tomorrow,
   and each day after, with genre and screening badges (baby club, CC,
   silver screen, almost full…).
-- **By screen** (`/screen`) — one cinema at a time, each day broken down by
-  auditorium, so you can see what's playing where. Consecutive showings of the
-  same film are grouped, so a screen's day reads as a programme.
-- **Calendar** (`/calendar`) — the same thing drawn to scale: screens as lanes
-  on a time axis, so gaps and overlaps are visible at a glance.
+- **By screen** (`/screen`) — one cinema at a time, drawn to scale: screens as
+  lanes on a time axis, so you can see what's playing where and when the gaps
+  are.
+
+Switching view keeps whichever cinema you were looking at.
 
 ## Screening times and durations
 

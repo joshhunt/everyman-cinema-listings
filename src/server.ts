@@ -11,13 +11,7 @@ import { logger } from "./o11y/logger.ts";
 import { bookingRedirects, httpRequestDuration, prometheusExporter } from "./o11y/otel.ts";
 import { config, DEFAULT_THEATERS_RANKED, EVERYMAN_WWW } from "./config.ts";
 import { cache } from "./everyman/cache.ts";
-import {
-  byDayView,
-  byMovieView,
-  byScreenView,
-  calendarView,
-  getSnapshot,
-} from "./everyman/service.ts";
+import { byDayView, byMovieView, calendarView, getSnapshot } from "./everyman/service.ts";
 import { ticketingRedirect } from "./everyman/links.ts";
 import { runtimeStats } from "./everyman/tmdb.ts";
 import {
@@ -30,7 +24,6 @@ import {
 import { readPrefs, writePref } from "./prefs.ts";
 import { byMoviePage } from "./views/byMovie.ts";
 import { byDayPage } from "./views/byDay.ts";
-import { byScreenPage } from "./views/byScreen.ts";
 import { calendarPage } from "./views/calendar.ts";
 import { connectPage } from "./views/connect.ts";
 
@@ -72,6 +65,12 @@ app.onError((err, c) => {
   return c.text(`Error: ${err.message}`, 500);
 });
 
+/** The cinema to show in a per-cinema view when the URL doesn't name one. */
+function currentTheater(c: Context): string {
+  const prefs = readPrefs(c);
+  return prefs.lastTheaterId ?? prefs.theaters[0] ?? DEFAULT_THEATERS_RANKED[0];
+}
+
 // --- Views
 
 app.get("/", async (c) => {
@@ -81,11 +80,7 @@ app.get("/", async (c) => {
   return c.html(byMoviePage(snapshot, theaters, prefs, isConnected()));
 });
 
-app.get("/day", (c) => {
-  const prefs = readPrefs(c);
-  const first = prefs.theaters[0] ?? DEFAULT_THEATERS_RANKED[0];
-  return c.redirect(`/day/${first}`);
-});
+app.get("/day", (c) => c.redirect(`/day/${currentTheater(c)}`));
 
 app.get("/day/:theaterId", async (c) => {
   const prefs = readPrefs(c);
@@ -102,15 +97,12 @@ app.get("/day/:theaterId", async (c) => {
     return c.text(`Unknown theater ${theaterId}`, 404);
   }
 
+  writePref(c, "lastTheater", theaterId);
   const days = byDayView(snapshot, theaterId, prefs);
   return c.html(byDayPage(snapshot, days, theater, prefs, isConnected()));
 });
 
-app.get("/screen", (c) => {
-  const prefs = readPrefs(c);
-  const first = prefs.theaters[0] ?? DEFAULT_THEATERS_RANKED[0];
-  return c.redirect(`/screen/${first}`);
-});
+app.get("/screen", (c) => c.redirect(`/screen/${currentTheater(c)}`));
 
 app.get("/screen/:theaterId", async (c) => {
   const prefs = readPrefs(c);
@@ -126,35 +118,14 @@ app.get("/screen/:theaterId", async (c) => {
     return c.text(`Unknown theater ${theaterId}`, 404);
   }
 
-  const days = byScreenView(snapshot, theaterId, prefs);
-  return c.html(byScreenPage(snapshot, days, theater, prefs, isConnected()));
-});
-
-app.get("/calendar", (c) => {
-  const prefs = readPrefs(c);
-  const first = prefs.theaters[0] ?? DEFAULT_THEATERS_RANKED[0];
-  return c.redirect(`/calendar/${first}`);
-});
-
-app.get("/calendar/:theaterId", async (c) => {
-  const prefs = readPrefs(c);
-  const theaterId = c.req.param("theaterId");
-
-  const theaterIds = prefs.theaters.includes(theaterId)
-    ? prefs.theaters
-    : [...prefs.theaters, theaterId];
-
-  const snapshot = await getSnapshot(theaterIds);
-  const theater = snapshot.theaters.find((t) => t.id === theaterId);
-  if (!theater) {
-    return c.text(`Unknown theater ${theaterId}`, 404);
-  }
-
+  writePref(c, "lastTheater", theaterId);
   const days = calendarView(snapshot, theaterId, prefs);
-  return c.html(
-    calendarPage(snapshot, days, theater, prefs, isConnected(), runtimeStats().known),
-  );
+  return c.html(calendarPage(snapshot, days, theater, prefs, isConnected()));
 });
+
+// The by-screen view used to live here before it became the calendar.
+app.get("/calendar", (c) => c.redirect("/screen"));
+app.get("/calendar/:theaterId", (c) => c.redirect(`/screen/${c.req.param("theaterId")}`));
 
 // --- Booking: attach the member session at click time, so the token never
 // appears in a page, a Referer header, or a browser history entry.

@@ -22,9 +22,16 @@ export type Html = HtmlEscapedString | Promise<HtmlEscapedString>;
 
 export function layout(props: {
   title: string;
-  activeTab: "by-movie" | "by-day" | "by-screen" | "calendar" | "connect";
+  activeTab: "by-movie" | "by-day" | "by-screen" | "connect";
   body: Html;
+  /**
+   * Cinema being viewed, so switching view keeps it. The per-cinema views also
+   * remember it in a cookie, which is what gets you back to the same cinema
+   * when you switch from the all-cinemas by-film view.
+   */
+  theaterId?: string;
 }): Html {
+  const forTheater = (base: string) => (props.theaterId ? `${base}/${props.theaterId}` : base);
   return html`<!doctype html>
     <html lang="en">
       <head>
@@ -37,9 +44,8 @@ export function layout(props: {
         <main class="main-content">
           <nav class="view-nav">
             <a href="/" class="view-tab ${props.activeTab === "by-movie" ? "active" : ""}">By film</a>
-            <a href="/day" class="view-tab ${props.activeTab === "by-day" ? "active" : ""}">By day</a>
-            <a href="/screen" class="view-tab ${props.activeTab === "by-screen" ? "active" : ""}">By screen</a>
-            <a href="/calendar" class="view-tab ${props.activeTab === "calendar" ? "active" : ""}">Calendar</a>
+            <a href="${forTheater("/day")}" class="view-tab ${props.activeTab === "by-day" ? "active" : ""}">By day</a>
+            <a href="${forTheater("/screen")}" class="view-tab ${props.activeTab === "by-screen" ? "active" : ""}">By screen</a>
             <a href="/connect" class="view-tab view-tab-end ${props.activeTab === "connect" ? "active" : ""}">Account</a>
           </nav>
           ${props.body}

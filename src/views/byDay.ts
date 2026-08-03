@@ -1,16 +1,10 @@
 import { html, layout, type Html } from "./layout.ts";
 import { settingsFooter } from "./settings.ts";
-import type { ByDayDay, ScreeningView, Snapshot } from "../everyman/service.ts";
+import { screeningLink } from "./screening.ts";
+import type { ByDayDay, Snapshot } from "../everyman/service.ts";
 import type { Prefs } from "../prefs.ts";
 import type { TheaterNode } from "../everyman/types.ts";
 
-function screeningLink(screening: ScreeningView): Html {
-  const classes = ["action-link", "time-slot", screening.almostFull ? "almost-full" : ""].join(" ");
-  return html`<span class="time-group"
-    ><a class="${classes}" href="${screening.url ?? "#"}">${screening.time}</a
-    >${screening.badges.map((badge) => html`<span class="badge">${badge}</span>`)}</span
-  >`;
-}
 
 export function byDayPage(
   snapshot: Snapshot,
@@ -73,5 +67,6 @@ export function byDayPage(
     title: `Everyman ${selectedTheater.name} — by day`,
     activeTab: "by-day",
     body,
+    theaterId: selectedTheater.id,
   });
 }

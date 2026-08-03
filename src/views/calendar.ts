@@ -37,8 +37,15 @@ function blockEl(block: CalendarBlock, axisStart: number): Html {
   >
     <span class="cal-ads" aria-hidden="true"></span>
     <span class="cal-block-body">
-      <span class="cal-block-title">${block.movie.title}</span>
-      <span class="cal-block-time">${block.filmStartTime}</span>
+      <span class="cal-block-line">
+        <span class="cal-block-title">${block.movie.title}</span>
+        <span class="cal-block-time">${block.filmStartTime}</span>
+      </span>
+      ${block.badges.length > 0
+        ? html`<span class="cal-block-line cal-block-badges">
+            ${block.badges.map((badge) => html`<span class="badge">${badge}</span>`)}
+          </span>`
+        : ""}
     </span>
   </a>`;
 }
@@ -49,7 +56,6 @@ export function calendarPage(
   selectedTheater: TheaterNode,
   prefs: Prefs,
   connected: boolean,
-  runtimesKnown: number,
 ): Html {
   const selectedTheaters = prefs.theaters
     .map((id) => snapshot.theaters.find((t) => t.id === id))
@@ -59,23 +65,12 @@ export function calendarPage(
     <nav class="cinema-tabs">
       ${selectedTheaters.map(
         (theater) => html`<a
-          href="/calendar/${theater.id}"
+          href="/screen/${theater.id}"
           class="cinema-tab ${theater.id === selectedTheater.id ? "active" : ""}"
           >${theater.name}</a
         >`,
       )}
     </nav>
-
-    <p class="cal-legend">
-      The hatched band is the ${ADS_MINUTES} minutes of ads and trailers, so the time on each
-      block is when the film actually starts.
-      ${runtimesKnown > 0
-        ? html`Blocks run ${ADS_MINUTES} min + the film's runtime, looked up on TMDB. A
-            <span class="cal-swatch is-estimated"></span> dashed edge means TMDB has no runtime for
-            it, so the length is estimated from the schedule instead.`
-        : html`Lengths are estimated from the schedule — set
-            <code>TMDB_READ_API_KEY</code> for exact runtimes.`}
-    </p>
 
     <div class="cal-days">
       ${days.length === 0
@@ -116,12 +111,13 @@ export function calendarPage(
             `,
           )}
     </div>
-    ${settingsFooter(snapshot, prefs, `/calendar/${selectedTheater.id}`, connected)}
+    ${settingsFooter(snapshot, prefs, `/screen/${selectedTheater.id}`, connected)}
   `;
 
   return layout({
-    title: `Everyman ${selectedTheater.name} — calendar`,
-    activeTab: "calendar",
+    title: `Everyman ${selectedTheater.name} — by screen`,
+    activeTab: "by-screen",
     body,
+    theaterId: selectedTheater.id,
   });
 }

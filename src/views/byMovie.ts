@@ -1,15 +1,8 @@
 import { html, layout, type Html } from "./layout.ts";
 import { settingsFooter } from "./settings.ts";
-import type { ByMovieTheater, ScreeningView, Snapshot } from "../everyman/service.ts";
+import { screeningLink } from "./screening.ts";
+import type { ByMovieTheater, Snapshot } from "../everyman/service.ts";
 import type { Prefs } from "../prefs.ts";
-
-function screeningLink(screening: ScreeningView): Html {
-  const classes = ["action-link", "time-slot", screening.almostFull ? "almost-full" : ""].join(" ");
-  const title = screening.badges.join(", ");
-  return html`<a class="${classes}" href="${screening.url ?? "#"}" title="${title}"
-    >${screening.time}${screening.badges.length > 0 ? html`<sup class="time-flag">*</sup>` : ""}</a
-  >`;
-}
 
 export function byMoviePage(
   snapshot: Snapshot,
