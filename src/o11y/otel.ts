@@ -3,10 +3,28 @@ import { PrometheusExporter } from "@opentelemetry/exporter-prometheus";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import { HttpInstrumentation } from "@opentelemetry/instrumentation-http";
 import { UndiciInstrumentation } from "@opentelemetry/instrumentation-undici";
-import { metrics, trace } from "@opentelemetry/api";
+import { metrics, trace, SpanKind, type Attributes } from "@opentelemetry/api";
+import { SamplingDecision, type Sampler } from "@opentelemetry/sdk-trace-base";
+import { ATTR_HTTP_ROUTE } from "@opentelemetry/semantic-conventions";
 import { logger } from "./logger.ts";
 
 const SERVICE_NAME = "everyman-cinema-listings";
+
+/**
+ * Drop server spans for /metrics. A Prometheus scrape every few seconds would
+ * otherwise be most of the trace volume, and says nothing about the app.
+ */
+const ignoreMetricsScrapes: Sampler = {
+  shouldSample(_ctx, _traceId, _spanName, spanKind, attributes: Attributes) {
+    if (spanKind === SpanKind.SERVER && attributes[ATTR_HTTP_ROUTE] === "/metrics") {
+      return { decision: SamplingDecision.NOT_RECORD };
+    }
+    return { decision: SamplingDecision.RECORD_AND_SAMPLED };
+  },
+  toString() {
+    return "IgnoreMetricsScrapes";
+  },
+};
 
 // Prometheus metrics are served through the app's own /metrics route rather
 // than the exporter's built-in server, so everything is on one port.
@@ -21,6 +39,7 @@ const sdk = new NodeSDK({
   serviceName: SERVICE_NAME,
   metricReader: prometheusExporter,
   traceExporter: otlpEndpoint ? new OTLPTraceExporter() : undefined,
+  sampler: ignoreMetricsScrapes,
   instrumentations: [
     new HttpInstrumentation(),
     new UndiciInstrumentation(),
