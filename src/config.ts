@@ -3,6 +3,9 @@ export const config = {
   logLevel: process.env.LOG_LEVEL ?? "info",
   cacheDir: process.env.CACHE_DIR ?? ".cache",
 
+  /** Where this app is reachable, used by the connect bookmarklet. */
+  siteOrigin: process.env.SITE_ORIGIN ?? `http://localhost:${process.env.PORT ?? 3000}`,
+
   // How far ahead we fetch schedules from the upstream API. Users slice this
   // window with the days-ahead setting, so it must cover the largest option.
   scheduleWindowDays: 78,
@@ -17,8 +20,14 @@ export const WEBSITE_ID =
   "V2Vic2l0ZU1hbmFnZXJXZWJzaXRlOmIyNWQwN2RkLTczYTYtNDg1Ny1iODAzLWZiMmMyM2NiYjFkYQ==";
 
 export const EVERYMAN_WWW = "https://www.everymancinema.com";
-export const PURCHASE_HOST = "purchase.everymancinema.com";
+export const PURCHASE_BASE = "https://purchase.everymancinema.com";
 export const CMS_ASSETS_BASE = "https://cms-assets.webediamovies.pro/prod/everyman";
+
+/**
+ * The loyalty circuit, which is a different id from the box office circuit
+ * above. Taken from the site's own loyalty settings.
+ */
+export const LOYALTY_CIRCUIT_ID = "180";
 
 const STRATFORD = "G029X";
 const KINGS_CROSS = "X0X5P";

@@ -64,6 +64,16 @@ export const cacheEvents = meter.createCounter("everyman_cache_events_total", {
   description: "Cache lookups by resource and result (hit, stale, miss)",
 });
 
+export const sessionRefreshes = meter.createCounter(
+  "everyman_session_refreshes_total",
+  { description: "Member session token refreshes by result" },
+);
+
+export const bookingRedirects = meter.createCounter(
+  "everyman_booking_redirects_total",
+  { description: "Booking link clicks by whether a member session was attached" },
+);
+
 // Age of each cached resource, labelled by cache key. Registered callbacks
 // are provided by the cache module.
 export const cacheAgeGauge = meter.createObservableGauge(

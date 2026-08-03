@@ -14,7 +14,12 @@ const TIME_FMT = new Intl.DateTimeFormat("en-GB", {
   timeZone: "Europe/London",
 });
 
-export function settingsFooter(snapshot: Snapshot, prefs: Prefs, backTo: string): Html {
+export function settingsFooter(
+  snapshot: Snapshot,
+  prefs: Prefs,
+  backTo: string,
+  connected: boolean,
+): Html {
   const theaters = [...snapshot.theaters].sort((a, b) => {
     const aRank = prefs.theaters.indexOf(a.id);
     const bRank = prefs.theaters.indexOf(b.id);
@@ -60,18 +65,10 @@ export function settingsFooter(snapshot: Snapshot, prefs: Prefs, backTo: string)
           <th class="nowrap">Booking links</th>
           <td>
             <div class="actions-list">
-              <a
-                class="action-link ${prefs.linkMode === "keep-login" ? "selected" : ""}"
-                href="/set-link-mode?mode=keep-login&back=${encodeURIComponent(backTo)}"
-                title="Bounce through everymancinema.com so your membership login is kept"
-                >keep me logged in</a
-              >
-              <a
-                class="action-link ${prefs.linkMode === "direct" ? "selected" : ""}"
-                href="/set-link-mode?mode=direct&back=${encodeURIComponent(backTo)}"
-                title="Link straight to the ticketing site (always logged out)"
-                >direct</a
-              >
+              ${connected
+                ? html`<span class="status-ok">signed in</span>`
+                : html`<span class="status-off">logged out</span>`}
+              <a class="action-link" href="/connect">${connected ? "manage" : "connect account"}</a>
             </div>
           </td>
         </tr>

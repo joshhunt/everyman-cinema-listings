@@ -1,36 +1,38 @@
-import { EVERYMAN_WWW, PURCHASE_HOST } from "../config.ts";
+import { PURCHASE_BASE } from "../config.ts";
 import type { ScreeningTicketing } from "./types.ts";
 
 /**
- * Build a booking link that keeps the user's Everyman login.
+ * Booking, and why it is not a plain link to the URL the schedule API gives us.
  *
- * Linking straight to purchase.everymancinema.com always lands logged-out:
- * the purchase site only knows about the session when the www site appends
- * the member token (?requestData=...) at click time, which it does from
- * client-side state we can't reach from another origin.
+ * The API gives `purchase.everymancinema.com/launch/ticketing/<id>`. Opening
+ * that always lands logged out — the purchase site only accepts a member
+ * session when it arrives on the `/api/launch/ticketing/redirect/<id>` path
+ * with `?requestData=<session token>`, which is exactly what everymancinema.com
+ * renders once you are signed in.
  *
- * The www app has a redirect hook that runs on every page: given
- * ?return=<path>, it validates the stored member token and forwards to
- * <ticketingUrl><path> with the token attached. Landing it on /login means
- * logged-out users authenticate first and are then forwarded too.
+ * We can't read their token from our own origin, so it is handed over once by
+ * the connect bookmarklet and kept server-side. Links therefore point at our
+ * own `/book/<id>`, which attaches a freshly-refreshed token at click time.
+ * That keeps the token out of the HTML (and out of Referer headers), and means
+ * a single redirect instead of everymancinema.com's five-second interstitial.
  */
-export function bookingUrl(
-  ticketing: ScreeningTicketing[],
-  mode: "keep-login" | "direct",
-): string | undefined {
+
+/** The showtime id from a ticketing URL, e.g. ".../launch/ticketing/<id>". */
+export function showtimeId(ticketing: ScreeningTicketing[]): string | undefined {
   const desktop = ticketing.find((t) => t.type === "DESKTOP") ?? ticketing[0];
-  const direct = desktop?.urls[0];
-  if (!direct) return undefined;
+  const url = desktop?.urls[0];
+  if (!url) return undefined;
 
-  if (mode === "direct") return direct;
+  const match = url.match(/\/launch\/ticketing\/([A-Za-z0-9-]+)/);
+  return match?.[1];
+}
 
-  try {
-    const url = new URL(direct);
-    if (url.hostname === PURCHASE_HOST) {
-      return `${EVERYMAN_WWW}/login/?return=${encodeURIComponent(url.pathname)}`;
-    }
-  } catch {
-    // fall through to the raw url
+/** Where /book/<id> sends the browser. */
+export function ticketingRedirect(id: string, token: string | undefined): string {
+  if (!token) {
+    // Not connected: the logged-out flow, same as before.
+    return `${PURCHASE_BASE}/launch/ticketing/${encodeURIComponent(id)}`;
   }
-  return direct;
+  const params = new URLSearchParams({ requestData: token });
+  return `${PURCHASE_BASE}/api/launch/ticketing/redirect/${encodeURIComponent(id)}?${params}`;
 }

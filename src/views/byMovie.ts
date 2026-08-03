@@ -11,7 +11,12 @@ function screeningLink(screening: ScreeningView): Html {
   >`;
 }
 
-export function byMoviePage(snapshot: Snapshot, theaters: ByMovieTheater[], prefs: Prefs): Html {
+export function byMoviePage(
+  snapshot: Snapshot,
+  theaters: ByMovieTheater[],
+  prefs: Prefs,
+  connected: boolean,
+): Html {
   const body = html`
     <div class="theater-list">
       ${theaters.map(
@@ -60,7 +65,7 @@ export function byMoviePage(snapshot: Snapshot, theaters: ByMovieTheater[], pref
         `,
       )}
     </div>
-    ${settingsFooter(snapshot, prefs, "/")}
+    ${settingsFooter(snapshot, prefs, "/", connected)}
   `;
 
   return layout({ title: "Everyman listings — by film", activeTab: "by-movie", body });

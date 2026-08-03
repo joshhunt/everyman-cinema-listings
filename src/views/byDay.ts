@@ -17,6 +17,7 @@ export function byDayPage(
   days: ByDayDay[],
   selectedTheater: TheaterNode,
   prefs: Prefs,
+  connected: boolean,
 ): Html {
   const selectedTheaters = prefs.theaters
     .map((id) => snapshot.theaters.find((t) => t.id === id))
@@ -65,7 +66,7 @@ export function byDayPage(
             `,
           )}
     </div>
-    ${settingsFooter(snapshot, prefs, `/day/${selectedTheater.id}`)}
+    ${settingsFooter(snapshot, prefs, `/day/${selectedTheater.id}`, connected)}
   `;
 
   return layout({

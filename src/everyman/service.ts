@@ -8,7 +8,7 @@ import {
   fetchSiteHash,
   fetchStaticQueries,
 } from "./client.ts";
-import { bookingUrl } from "./links.ts";
+import { showtimeId } from "./links.ts";
 import type { MovieNode, TheaterNode, UpstreamScreening } from "./types.ts";
 import type { Prefs } from "../prefs.ts";
 
@@ -132,10 +132,12 @@ const BADGE_LABELS: Record<string, string> = {
   "Showtime.Accessibility.Dubbed": "dubbed",
 };
 
-function toScreeningView(screening: UpstreamScreening, prefs: Prefs): ScreeningView {
+function toScreeningView(screening: UpstreamScreening): ScreeningView {
+  const id = showtimeId(screening.data.ticketing);
   return {
     time: formatTime(screening.startsAt),
-    url: bookingUrl(screening.data.ticketing, prefs.linkMode),
+    // Our own redirect, which attaches the member session at click time.
+    url: id ? `/book/${id}` : undefined,
     badges: screening.tags.map((t) => BADGE_LABELS[t]).filter((b) => b !== undefined),
     almostFull: screening.tags.includes("Internal.Data.AlmostSoldOut"),
   };
@@ -202,7 +204,7 @@ export function byMovieView(snapshot: Snapshot, prefs: Prefs): ByMovieTheater[] 
         collapsed: seen || isAtEarlierTheater,
         days: clippedDays.map((d) => ({
           label: formatDay(d.day),
-          screenings: d.screenings.map((s) => toScreeningView(s, prefs)),
+          screenings: d.screenings.map((s) => toScreeningView(s)),
         })),
       });
     }
@@ -245,7 +247,7 @@ export function byDayView(snapshot: Snapshot, theaterId: string, prefs: Prefs): 
         movie,
         movieUrl: `https://www.everymancinema.com${movie.path}`,
         seen: prefs.seenMovieIds.includes(movie.id),
-        screenings: screenings.map((s) => toScreeningView(s, prefs)),
+        screenings: screenings.map((s) => toScreeningView(s)),
       };
       const item = { firstStartsAt: screenings[0].startsAt, entry };
       const list = byDay.get(day);

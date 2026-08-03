@@ -4,14 +4,25 @@ import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { RESPONSE_ALREADY_SENT } from "@hono/node-server/utils/response";
 import { Hono } from "hono";
+import { compress } from "hono/compress";
+import { etag } from "hono/etag";
 import { logger } from "./o11y/logger.ts";
-import { httpRequestDuration, prometheusExporter } from "./o11y/otel.ts";
-import { config, DEFAULT_THEATERS_RANKED } from "./config.ts";
+import { bookingRedirects, httpRequestDuration, prometheusExporter } from "./o11y/otel.ts";
+import { config, DEFAULT_THEATERS_RANKED, EVERYMAN_WWW } from "./config.ts";
 import { cache } from "./everyman/cache.ts";
 import { byDayView, byMovieView, getSnapshot } from "./everyman/service.ts";
+import { ticketingRedirect } from "./everyman/links.ts";
+import {
+  connect,
+  disconnect,
+  getSessionToken,
+  isConnected,
+  startBackgroundRefresh,
+} from "./everyman/session.ts";
 import { readPrefs, writePref } from "./prefs.ts";
 import { byMoviePage } from "./views/byMovie.ts";
 import { byDayPage } from "./views/byDay.ts";
+import { connectPage } from "./views/connect.ts";
 
 const log = logger.child({ module: "server" });
 const app = new Hono();
@@ -35,6 +46,17 @@ app.use("*", async (c, next) => {
   }
 });
 
+// ETag + compression for rendered pages and assets. /metrics writes to the
+// node response directly, so it must not pass through either.
+const compressible = (path: string) => path !== "/metrics";
+
+app.use("*", async (c, next) => {
+  if (!compressible(c.req.path)) return next();
+  await etag()(c, async () => {
+    await compress()(c, next);
+  });
+});
+
 app.onError((err, c) => {
   log.error({ err, path: c.req.path }, "request failed");
   return c.text(`Error: ${err.message}`, 500);
@@ -46,7 +68,7 @@ app.get("/", async (c) => {
   const prefs = readPrefs(c);
   const snapshot = await getSnapshot(prefs.theaters);
   const theaters = byMovieView(snapshot, prefs);
-  return c.html(byMoviePage(snapshot, theaters, prefs));
+  return c.html(byMoviePage(snapshot, theaters, prefs, isConnected()));
 });
 
 app.get("/day", (c) => {
@@ -71,7 +93,58 @@ app.get("/day/:theaterId", async (c) => {
   }
 
   const days = byDayView(snapshot, theaterId, prefs);
-  return c.html(byDayPage(snapshot, days, theater, prefs));
+  return c.html(byDayPage(snapshot, days, theater, prefs, isConnected()));
+});
+
+// --- Booking: attach the member session at click time, so the token never
+// appears in a page, a Referer header, or a browser history entry.
+
+app.get("/book/:showtimeId", async (c) => {
+  const showtimeId = c.req.param("showtimeId");
+  if (!/^[A-Za-z0-9-]{1,64}$/.test(showtimeId)) {
+    return c.text("Invalid showtime id", 400);
+  }
+
+  const token = await getSessionToken();
+  bookingRedirects.add(1, { session: token ? "attached" : "none" });
+
+  // 302 so the browser doesn't cache a URL containing a short-lived token.
+  c.header("Cache-Control", "no-store");
+  c.header("Referrer-Policy", "no-referrer");
+  return c.redirect(ticketingRedirect(showtimeId, token), 302);
+});
+
+// --- Account connection
+
+app.get("/connect", (c) => c.html(connectPage(isConnected())));
+
+app.get("/disconnect", async (c) => {
+  await disconnect();
+  return c.redirect("/connect");
+});
+
+// The bookmarklet runs on everymancinema.com, so this one endpoint is
+// cross-origin. Only that origin may call it, and only to hand over tokens.
+const connectCors = {
+  "Access-Control-Allow-Origin": EVERYMAN_WWW,
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+  Vary: "Origin",
+};
+
+app.options("/api/connect", (c) => c.body(null, 204, connectCors));
+
+app.post("/api/connect", async (c) => {
+  const body = await c.req.json().catch(() => undefined);
+  const token = typeof body?.token === "string" ? body.token : undefined;
+  const refreshToken = typeof body?.refreshToken === "string" ? body.refreshToken : undefined;
+
+  if (!token || !refreshToken) {
+    return c.json({ ok: false, error: "token and refreshToken are required" }, 400, connectCors);
+  }
+
+  await connect(token, refreshToken);
+  return c.json({ ok: true }, 200, connectCors);
 });
 
 // --- Settings (cookie-backed, GET + redirect back)
@@ -115,17 +188,11 @@ app.get("/set-seen", (c) => {
   return c.redirect(backTo(c));
 });
 
-app.get("/set-link-mode", (c) => {
-  const mode = c.req.query("mode");
-  if (mode !== "keep-login" && mode !== "direct") return c.text("Invalid mode", 400);
-
-  writePref(c, "linkMode", mode);
-  return c.redirect(backTo(c));
-});
-
 // --- Operational endpoints
 
-app.get("/healthz", (c) => c.json({ ok: true, cache: cache.ages() }));
+app.get("/healthz", (c) =>
+  c.json({ ok: true, memberSessionConnected: isConnected(), cache: cache.ages() }),
+);
 
 app.get("/metrics", (c) => {
   // Bridge the Prometheus exporter's node-style handler into Hono.
@@ -137,11 +204,21 @@ app.get("/metrics", (c) => {
   return RESPONSE_ALREADY_SENT;
 });
 
-app.use("/public/*", serveStatic({ root: "./" }));
+app.use(
+  "/public/*",
+  serveStatic({
+    root: "./",
+    onFound: (_path, c) => {
+      c.header("Cache-Control", "public, max-age=3600");
+    },
+  }),
+);
 
 serve({ fetch: app.fetch, port: config.port }, (info) => {
   log.info({ port: info.port }, "server listening");
 });
+
+startBackgroundRefresh();
 
 // Warm the default snapshot so the first request after a restart is fast.
 getSnapshot(DEFAULT_THEATERS_RANKED)

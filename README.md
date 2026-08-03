@@ -29,16 +29,28 @@ docker run -p 3000:80 everyman-listings
 
 ## Booking links keep you logged in
 
-Booking links route through `everymancinema.com/login/?return=…` instead of
-linking straight to the ticketing site. The Everyman site validates your
-membership session and forwards you to checkout with it attached, so you stay
-logged in (or log in once on the way through). Switch to raw ticketing links
-with the "Booking links" setting in the page footer.
+Everyman's ticketing site only accepts a member session when the link lands on
+`/api/launch/ticketing/redirect/<id>?requestData=<session token>`. The token
+lives in a cookie on `everymancinema.com` that no other origin can read, so it
+has to be handed over once, from a page on their site.
+
+Open `/connect` and use the bookmarklet there while logged in to Everyman. After
+that, booking links go straight to seat selection, signed in, in one redirect.
+
+Booking links point at this app's own `/book/<id>`, which attaches a
+freshly-refreshed token at click time. That keeps the token out of the page
+source and out of `Referer` headers, and means the token is never stale. The
+token is refreshed in the background every few minutes; if it ever expires,
+links fall back to the logged-out flow and you can click the bookmarklet again.
+
+Member login itself is Cloudflare Turnstile-protected, so this app cannot (and
+does not) log in for you or handle your password.
 
 ## Settings
 
-Stored in cookies, changed from the page footer: selected cinemas, days
-ahead, booking link mode, and seen films.
+Stored in cookies, changed from the page footer: selected cinemas, days ahead,
+and seen films. The Everyman session is held server-side, so this is a
+single-user tool — don't expose it to the internet as-is.
 
 ## Observability
 
@@ -54,7 +66,8 @@ ahead, booking link mode, and seen films.
 | --- | --- | --- |
 | `PORT` | `3000` | HTTP port |
 | `LOG_LEVEL` | `info` | pino level |
-| `CACHE_DIR` | `.cache` | where the upstream cache is persisted |
+| `CACHE_DIR` | `.cache` | where the upstream cache and member session are persisted |
+| `SITE_ORIGIN` | `http://localhost:$PORT` | origin baked into the connect bookmarklet |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | unset | enables trace export |
 
 ## How it gets the data
