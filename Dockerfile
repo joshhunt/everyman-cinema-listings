@@ -7,14 +7,15 @@ RUN corepack enable
 
 WORKDIR /app
 
-COPY pnpm-lock.yaml /app
-RUN pnpm fetch --prod
-
-COPY package.json .
-RUN pnpm install --prod
+# package.json comes in with the lockfile so corepack honours the pinned
+# packageManager. With only the lockfile present it silently uses whatever pnpm
+# is newest, whose supply-chain policies differ from the one we develop against.
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --prod --frozen-lockfile
 
 COPY . .
 
+# There is no build step: Node runs the TypeScript directly.
 ENV PORT=80
 ENV CACHE_DIR=/app/.cache
 EXPOSE 80
