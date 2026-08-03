@@ -1,26 +1,32 @@
 {
   "name": "everyman-cinema-listings",
-  "version": "1.0.0",
-  "description": "",
+  "version": "2.0.0",
+  "description": "Ultra-dense, high-readability view of Everyman cinema listings",
   "type": "module",
-  "main": "index.js",
+  "private": true,
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "echo \"Nothing to build!\""
+    "start": "node --disable-warning=ExperimentalWarning src/server.ts",
+    "dev": "node --disable-warning=ExperimentalWarning --watch src/server.ts",
+    "typecheck": "tsc --noEmit"
   },
-  "keywords": [],
-  "author": "",
   "license": "ISC",
   "dependencies": {
-    "@joshhunt/fs-cache": "0.1.1",
-    "@types/cookie-parser": "^1.4.8",
-    "@types/express": "^5.0.0",
-    "@types/node": "^22.10.10",
-    "cheerio": "^1.0.0",
-    "cookie-parser": "^1.4.7",
-    "express": "^4.18.2",
-    "express-handlebars": "^8.0.1",
-    "typescript": "^5.7.3"
+    "@hono/node-server": "^2.0.12",
+    "@opentelemetry/api": "^1.9.1",
+    "@opentelemetry/exporter-prometheus": "^0.221.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.221.0",
+    "@opentelemetry/instrumentation-http": "^0.221.0",
+    "@opentelemetry/instrumentation-undici": "^0.31.0",
+    "@opentelemetry/sdk-node": "^0.221.0",
+    "hono": "^4.12.34",
+    "pino": "^10.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^7.0.2"
+  },
+  "engines": {
+    "node": ">=24"
   },
   "packageManager": "pnpm@10.7.0+sha512.6b865ad4b62a1d9842b61d674a393903b871d9244954f652b8842c2b553c72176b278f64c463e52d40fff8aba385c235c8c9ecf5cc7de4fd78b8bb6d49633ab6"
 }

@@ -1,4 +1,4 @@
-FROM node:23.6.0-alpine
+FROM node:24-alpine
 
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
@@ -11,11 +11,12 @@ COPY pnpm-lock.yaml /app
 RUN pnpm fetch --prod
 
 COPY package.json .
-RUN pnpm install
+RUN pnpm install --prod
 
 COPY . .
 
 ENV PORT=80
+ENV CACHE_DIR=/app/.cache
 EXPOSE 80
 
-CMD [ "node", "server.ts" ]
+CMD [ "node", "--disable-warning=ExperimentalWarning", "src/server.ts" ]
