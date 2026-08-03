@@ -1,3 +1,5 @@
 .cache
 responses
 node_modules
+.env
+.env.*

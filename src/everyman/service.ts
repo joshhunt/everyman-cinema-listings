@@ -9,7 +9,7 @@ import {
   fetchStaticQueries,
 } from "./client.ts";
 import { showtimeId } from "./links.ts";
-import { lookupRuntime } from "./runtimes.ts";
+import { getRuntime, ensureRuntimes } from "./tmdb.ts";
 import type { MovieNode, TheaterNode, UpstreamScreening } from "./types.ts";
 import type { Prefs } from "../prefs.ts";
 
@@ -101,11 +101,19 @@ export async function getSnapshot(theaterIds: string[]): Promise<Snapshot> {
     }),
   );
 
-  return {
+  const snapshot: Snapshot = {
     theaters,
     schedules: schedules.filter((s) => s !== undefined),
     fetchedAt,
   };
+
+  // Fill in any unknown runtimes in the background, so a render never waits on
+  // TMDB. Whatever isn't cached yet falls back to the schedule estimate.
+  ensureRuntimes(
+    snapshot.schedules.flatMap((s) => s.movies.map((m) => m.movie.title)),
+  );
+
+  return snapshot;
 }
 
 function firstScreeningOf(movie: MovieSchedule): string {
@@ -461,7 +469,7 @@ export function calendarView(
 
         // A known runtime gives the exact answer the user cares about: ads plus
         // the feature. Otherwise fall back to the gap derived from the schedule.
-        const runtimeMinutes = lookupRuntime(movie.title);
+        const runtimeMinutes = getRuntime(movie.title);
         const slotMinutes = runtimeMinutes
           ? ADS_MINUTES + runtimeMinutes
           : (slotEstimates.get(movie.id) ?? DEFAULT_SLOT_MINUTES);

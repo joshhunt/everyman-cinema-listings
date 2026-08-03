@@ -69,6 +69,10 @@ export const sessionRefreshes = meter.createCounter(
   { description: "Member session token refreshes by result" },
 );
 
+export const tmdbLookups = meter.createCounter("everyman_tmdb_lookups_total", {
+  description: "TMDB runtime lookups by result (hit, miss, error)",
+});
+
 export const bookingRedirects = meter.createCounter(
   "everyman_booking_redirects_total",
   { description: "Booking link clicks by whether a member session was attached" },

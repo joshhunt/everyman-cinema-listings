@@ -20,20 +20,26 @@ The advertised time is when the room opens — the feature starts **25 minutes
 later**, after ads and trailers. The calendar shows that leading band hatched,
 and the time on each block is when the film actually starts.
 
-Everyman's own feed has no runtime (`runtime` is null on every film), but
-Vista's booking platform — the vendor behind their ticketing — does, at
-`GET https://digital-api.everymancinema.com/ocapi/v1/films`.
+Everyman's own feed has no runtime (`runtime` is null on every film), so
+runtimes come from TMDB. Set `TMDB_READ_API_KEY` to a TMDB API Read Access
+Token — a `.env` file works, it's loaded at startup.
 
-That API needs a bearer token which only Vista's web client is handed, and the
-pages exposing one block server-side fetches, so the import runs in your
-browser: `/connect` has a bookmarklet that copies the film list, which you paste
-back. Only titles and runtimes are sent to the server — never the token. Vista's
-film ids share nothing with the listings feed, so films are matched on title,
-with a token-subset fallback because Vista abbreviates for its tills
-("Throwback: The Fellowship of the Ring"). Runtimes never change, so this only
-needs repeating when new films appear.
+Lookups happen in the background and are cached on disk, so a page render never
+waits on TMDB: an uncached film shows an estimated length until the lookup
+lands, and cached runtimes are reused indefinitely.
 
-Anything unmatched falls back to an estimate derived from the schedule — the
+There is no shared id with TMDB, so films are matched on title. Everyman dress
+titles up with programme strands and format notes, so `src/everyman/tmdb.ts`
+tries progressively cleaned-up variants — dropping `(4K Restoration)`-style
+annotations, strand prefixes like `Throwback:` and `Toddler Club:`, sing-along
+suffixes, and possessive credits (`Dr Seuss' The Lorax` → `The Lorax`). A
+parenthesised year (`Solaris (1972)`) is used to disambiguate re-releases. A
+candidate only counts as a match if the titles are equal once normalised, so a
+failed clean-up leaves the film unmatched rather than borrowing another film's
+runtime.
+
+Anything unmatched — usually shorts compilations like `Toddler Club: Stick Man
++ Superworm` — falls back to an estimate derived from the schedule: the
 shortest gap between consecutive showings on one screen, which is ads + film +
 changeover. Those blocks get a dashed trailing edge and a `~` on the end time.
 
@@ -104,6 +110,7 @@ single-user tool — don't expose it to the internet as-is.
 | `LOG_LEVEL` | `info` | pino level |
 | `CACHE_DIR` | `.cache` | where the upstream cache and member session are persisted |
 | `SITE_ORIGIN` | `http://localhost:$PORT` | origin baked into the connect bookmarklet |
+| `TMDB_READ_API_KEY` | unset | TMDB Read Access Token, for film runtimes |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | unset | enables trace export |
 
 ## How it gets the data

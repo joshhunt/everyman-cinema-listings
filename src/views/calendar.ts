@@ -70,13 +70,11 @@ export function calendarPage(
       The hatched band is the ${ADS_MINUTES} minutes of ads and trailers, so the time on each
       block is when the film actually starts.
       ${runtimesKnown > 0
-        ? html`Blocks run ${ADS_MINUTES} min + runtime, from
-            ${runtimesKnown} imported runtimes. A
-            <span class="cal-swatch is-estimated"></span> dashed edge means the runtime is unknown
-            and the length is estimated from the schedule —
-            <a href="/connect">import runtimes</a> to fix those.`
-        : html`Lengths are estimated from the schedule.
-            <a href="/connect">Import runtimes</a> for exact ones.`}
+        ? html`Blocks run ${ADS_MINUTES} min + the film's runtime, looked up on TMDB. A
+            <span class="cal-swatch is-estimated"></span> dashed edge means TMDB has no runtime for
+            it, so the length is estimated from the schedule instead.`
+        : html`Lengths are estimated from the schedule — set
+            <code>TMDB_READ_API_KEY</code> for exact runtimes.`}
     </p>
 
     <div class="cal-days">
