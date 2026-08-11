@@ -4,7 +4,8 @@ A dense, fast view of what's on at [Everyman](https://www.everymancinema.com)
 cinemas. Scrapes the Everyman website's data feeds and renders two views:
 
 - **By film** (`/`) — each selected cinema in a column, each film with its
-  upcoming screening times. Mark films as seen to collapse them.
+  upcoming screening times. Mark films as seen to collapse them. Everyman's
+  toddler strand starts collapsed, at the bottom of each column.
 - **By day** (`/day`) — one cinema at a time: what's showing today, tomorrow,
   and each day after, with genre and screening badges (baby club, CC,
   silver screen, almost full…).

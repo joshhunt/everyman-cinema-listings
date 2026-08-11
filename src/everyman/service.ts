@@ -185,9 +185,23 @@ export interface ByMovieMovie {
   movieUrl: string;
   seen: boolean;
   isAtEarlierTheater: boolean;
+  isToddlerClub: boolean;
   collapsed: boolean;
   days: { label: string; screenings: ScreeningView[] }[];
 }
+
+/**
+ * The toddler strand: 9am shorts compilations, a different programme rather
+ * than a film you'd choose off the listings. A new one lands most weeks, so
+ * marking them seen one by one never stays done — match the strand instead.
+ *
+ * Everyman title them "Toddler Club: Stick Man + Superworm" on the site and
+ * "Toddler - Stickman + Superworm" upstream; both forms are matched in case the
+ * displayed title ever changes to the other. Only the prefix counts, so a film
+ * merely *about* toddlers isn't caught. Screening tags look tempting here, but
+ * KidsFriendly is applied unevenly — some family strands carry none.
+ */
+const TODDLER_STRAND = /^toddler\b\s*(club)?\s*[:—–-]/i;
 
 export function byMovieView(snapshot: Snapshot, prefs: Prefs): ByMovieTheater[] {
   const seenAtEarlierTheater = new Set<string>();
@@ -205,12 +219,15 @@ export function byMovieView(snapshot: Snapshot, prefs: Prefs): ByMovieTheater[] 
       const seen = prefs.seenMovieIds.includes(movie.id);
       if (seen && isAtEarlierTheater) continue;
 
+      const isToddlerClub = TODDLER_STRAND.test(movie.title);
+
       movies.push({
         movie,
         movieUrl: `https://www.everymancinema.com${movie.path}`,
         seen,
         isAtEarlierTheater,
-        collapsed: seen || isAtEarlierTheater,
+        isToddlerClub,
+        collapsed: seen || isAtEarlierTheater || isToddlerClub,
         days: clippedDays.map((d) => ({
           label: formatDay(d.day),
           screenings: d.screenings.map((s) => toScreeningView(s)),
@@ -225,7 +242,10 @@ export function byMovieView(snapshot: Snapshot, prefs: Prefs): ByMovieTheater[] 
 }
 
 function rank(movie: ByMovieMovie): number {
-  return movie.seen ? 2 : movie.isAtEarlierTheater ? 1 : -1;
+  if (movie.seen) return 3;
+  if (movie.isToddlerClub) return 2;
+  if (movie.isAtEarlierTheater) return 1;
+  return -1;
 }
 
 // --- By day (per-cinema)
