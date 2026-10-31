@@ -267,7 +267,7 @@ export interface ByDayMovie {
 const UNKNOWN_SCREEN = "Screen ?";
 
 /** Normalise the inconsistent upstream names to a single "Screen N" form. */
-function screenLabel(name: string | undefined): string {
+export function screenLabel(name: string | undefined): string {
   const trimmed = name?.trim();
   if (!trimmed) return UNKNOWN_SCREEN;
   return /^\d+$/.test(trimmed) ? `Screen ${trimmed}` : trimmed;

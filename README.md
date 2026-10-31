@@ -89,6 +89,22 @@ links fall back to the logged-out flow and you can click the bookmarklet again.
 Member login itself is Cloudflare Turnstile-protected, so this app cannot (and
 does not) log in for you or handle your password.
 
+## JSON API
+
+For native clients. Stateless: no cookies, and it never uses the member
+session, so `bookingUrl` is the plain logged-out purchase link.
+
+- `GET /api/v1/theaters` — every cinema: `id`, `name`, `timeZone`, `url`.
+- `GET /api/v1/theaters/:id/screenings?from=YYYY-MM-DD&to=YYYY-MM-DD` —
+  upcoming screenings at one cinema, flat and sorted, plus the `movies` they
+  reference (`certificate`, `genres`, `release`, TMDB `runtimeMinutes`).
+  `from` defaults to today, `to` to everything scraped. Each screening has the
+  raw `tags`, `screen`, `occupancyRate` (percent sold), `showtimeId`,
+  `bookingUrl` and raw `ticketing` entries.
+
+Times are cinema-local wall-clock strings with no offset; pair them with the
+theater's `timeZone`. Errors are `{ "error", "message" }` with 400/404/502.
+
 ## Settings
 
 Stored in cookies, changed from the page footer: selected cinemas, days ahead,

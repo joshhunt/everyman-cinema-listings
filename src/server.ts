@@ -26,6 +26,7 @@ import { byMoviePage } from "./views/byMovie.ts";
 import { byDayPage } from "./views/byDay.ts";
 import { calendarPage } from "./views/calendar.ts";
 import { connectPage } from "./views/connect.ts";
+import { api } from "./api.ts";
 
 const log = logger.child({ module: "server" });
 const app = new Hono();
@@ -70,6 +71,10 @@ function currentTheater(c: Context): string {
   const prefs = readPrefs(c);
   return prefs.lastTheaterId ?? prefs.theaters[0] ?? DEFAULT_THEATERS_RANKED[0];
 }
+
+// --- JSON API (native clients). Registered before /api/connect, which is the
+// bookmarklet endpoint and lives outside /api/v1.
+app.route("/api/v1", api);
 
 // --- Views
 
